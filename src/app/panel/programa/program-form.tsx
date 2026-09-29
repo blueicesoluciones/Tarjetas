@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cardBackgroundStyle } from "@/lib/cards/card-style";
 import { COMMON_COUNTRIES, COMMON_TIMEZONES, type ProgramFormValues } from "@/lib/panel/program-schema";
 import { saveProgram, type ProgramFormState } from "./actions";
 
@@ -15,13 +16,14 @@ interface Props {
   programId: string;
   designVersion: number;
   logoUrl: string | null;
+  backgroundUrl: string | null;
   initial: ProgramFormValues;
 }
 
 const selectClass =
   "h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 
-export function ProgramForm({ programId, designVersion, logoUrl, initial }: Props) {
+export function ProgramForm({ programId, designVersion, logoUrl, backgroundUrl, initial }: Props) {
   const router = useRouter();
   const [state, action, pending] = useActionState<ProgramFormState, FormData>(saveProgram, {});
   const [v, setV] = useState(initial);
@@ -154,7 +156,7 @@ export function ProgramForm({ programId, designVersion, logoUrl, initial }: Prop
 
       <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
         <p className="text-sm font-medium">Vista previa</p>
-        <CardPreview values={v} required={required} count={count} logoUrl={logoUrl} />
+        <CardPreview values={v} required={required} count={count} logoUrl={logoUrl} backgroundUrl={backgroundUrl} />
         <div className="flex items-center gap-3 text-sm">
           <Label htmlFor="preview-count" className="shrink-0 text-muted-foreground">
             Sellos de ejemplo
@@ -170,7 +172,8 @@ export function ProgramForm({ programId, designVersion, logoUrl, initial }: Prop
           />
           <span className="w-10 text-right tabular-nums">{count}</span>
         </div>
-        <LogoUpload />
+        <BackgroundPicker backgroundUrl={backgroundUrl} />
+        <LogoUpload hasLogo={Boolean(logoUrl)} />
         <details className="text-sm">
           <summary className="cursor-pointer text-muted-foreground">Imagen guardada (Google Wallet)</summary>
           {/* eslint-disable-next-line @next/next/no-img-element -- imagen dinámica */}
@@ -244,18 +247,20 @@ function CardPreview({
   required,
   count,
   logoUrl,
+  backgroundUrl,
 }: {
   values: ProgramFormValues;
   required: number;
   count: number;
   logoUrl: string | null;
+  backgroundUrl: string | null;
 }) {
   const bg = /^#[0-9A-Fa-f]{6}$/.test(values.primaryColor) ? values.primaryColor : "#111827";
   const fg = /^#[0-9A-Fa-f]{6}$/.test(values.textColor) ? values.textColor : "#FFFFFF";
   const reward = count >= required;
   const cols = required <= 10 ? Math.min(required, 5) : Math.ceil(required / Math.ceil(required / 6));
   return (
-    <article className="overflow-hidden rounded-3xl shadow-lg" style={{ backgroundColor: bg, color: fg }}>
+    <article className="overflow-hidden rounded-3xl shadow-lg" style={{ ...cardBackgroundStyle(bg, backgroundUrl), color: fg }}>
       <div className="flex items-center gap-3 px-5 pt-5">
         <BusinessLogo name={values.businessName || "?"} logoUrl={logoUrl} primaryColor={bg} textColor={fg} size={40} />
         <div className="min-w-0">
@@ -289,51 +294,161 @@ function CardPreview({
   );
 }
 
-function LogoUpload() {
+/** Sube o quita una imagen (logo o fondo) y refresca la página. */
+function useImageUpload(kind: "logo" | "background", maxMb: number) {
   const router = useRouter();
-  const inputRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState(false);
 
   async function upload(file: File) {
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("La imagen supera 2 MB");
+    if (file.size > maxMb * 1024 * 1024) {
+      toast.error(`La imagen supera ${maxMb} MB`);
       return;
     }
     setPending(true);
     const form = new FormData();
-    form.append("logo", file);
+    form.append("kind", kind);
+    form.append("file", file);
     try {
       const res = await fetch("/panel/programa/logo", { method: "POST", body: form });
       const body = (await res.json()) as { ok: boolean; error?: string };
       if (body.ok) {
-        toast.success("Logo actualizado");
+        toast.success(kind === "logo" ? "Logo actualizado" : "Fondo actualizado");
         router.refresh();
-      } else toast.error(body.error ?? "No se pudo subir el logo");
+      } else toast.error(body.error ?? "No se pudo subir la imagen");
     } catch {
       toast.error("Sin conexión");
     } finally {
       setPending(false);
-      if (inputRef.current) inputRef.current.value = "";
     }
   }
 
+  async function remove() {
+    setPending(true);
+    try {
+      const res = await fetch(`/panel/programa/logo?kind=${kind}`, { method: "DELETE" });
+      const body = (await res.json()) as { ok: boolean; error?: string };
+      if (body.ok) {
+        toast.success(kind === "logo" ? "Logo quitado" : "Ahora el fondo es de color sólido");
+        router.refresh();
+      } else toast.error(body.error ?? "No se pudo quitar la imagen");
+    } catch {
+      toast.error("Sin conexión");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return { pending, upload, remove };
+}
+
+function FilePickerButton({
+  accept,
+  label,
+  pending,
+  onFile,
+}: {
+  accept: string;
+  label: string;
+  pending: boolean;
+  onFile: (f: File) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        accept={accept}
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onFile(f);
+          e.target.value = "";
+        }}
+      />
+      <Button type="button" variant="outline" disabled={pending} onClick={() => inputRef.current?.click()}>
+        {pending ? "Subiendo…" : label}
+      </Button>
+    </>
+  );
+}
+
+function BackgroundPicker({ backgroundUrl }: { backgroundUrl: string | null }) {
+  const { pending, upload, remove } = useImageUpload("background", 5);
+  const [mode, setMode] = useState<"color" | "image">(backgroundUrl ? "image" : "color");
+
+  return (
+    <div className="space-y-3 rounded-xl border p-4">
+      <div>
+        <p className="text-sm font-medium">Fondo de la tarjeta</p>
+        <p className="text-xs text-muted-foreground">Se usa en la tarjeta web, en tu página de inscripción y en Google Wallet.</p>
+      </div>
+      <div className="grid grid-cols-2 gap-2 text-sm">
+        {(
+          [
+            ["color", "Color sólido"],
+            ["image", "Imagen"],
+          ] as const
+        ).map(([value, label]) => (
+          <label
+            key={value}
+            className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 py-2 ${
+              mode === value ? "border-foreground bg-muted font-medium" : "text-muted-foreground"
+            }`}
+          >
+            <input
+              type="radio"
+              name="background-mode"
+              value={value}
+              checked={mode === value}
+              onChange={() => {
+                setMode(value);
+                if (value === "color" && backgroundUrl) void remove();
+              }}
+              className="sr-only"
+            />
+            {label}
+          </label>
+        ))}
+      </div>
+      {mode === "color" ? (
+        <p className="text-xs text-muted-foreground">Se usa el «Color principal» de la sección Marca.</p>
+      ) : (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            PNG o JPG, máximo 5 MB. Ideal horizontal (por ejemplo 1200×800). Se tiñe con tu color principal para que el texto se lea bien.
+          </p>
+          <FilePickerButton
+            accept="image/png,image/jpeg"
+            label={backgroundUrl ? "Cambiar imagen" : "Subir imagen"}
+            pending={pending}
+            onFile={upload}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LogoUpload({ hasLogo }: { hasLogo: boolean }) {
+  const { pending, upload, remove } = useImageUpload("logo", 2);
   return (
     <div className="rounded-xl border p-4">
       <p className="text-sm font-medium">Logo</p>
       <p className="mb-3 text-xs text-muted-foreground">PNG, JPG o WEBP, máximo 2 MB. Idealmente cuadrado.</p>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/png,image/jpeg,image/webp"
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) void upload(f);
-        }}
-      />
-      <Button type="button" variant="outline" disabled={pending} onClick={() => inputRef.current?.click()}>
-        {pending ? "Subiendo…" : "Subir logo"}
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <FilePickerButton
+          accept="image/png,image/jpeg,image/webp"
+          label={hasLogo ? "Cambiar logo" : "Subir logo"}
+          pending={pending}
+          onFile={upload}
+        />
+        {hasLogo ? (
+          <Button type="button" variant="ghost" disabled={pending} onClick={remove}>
+            Quitar
+          </Button>
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -1,16 +1,21 @@
 import Image from "next/image";
+import { cardBackgroundStyle } from "@/lib/cards/card-style";
 
 interface BrandHeaderProps {
   name: string;
   logoUrl: string | null;
   primaryColor: string;
   textColor: string;
+  backgroundUrl?: string | null;
   subtitle?: string;
 }
 
-export function BrandHeader({ name, logoUrl, primaryColor, textColor, subtitle }: BrandHeaderProps) {
+export function BrandHeader({ name, logoUrl, primaryColor, textColor, backgroundUrl = null, subtitle }: BrandHeaderProps) {
   return (
-    <header className="px-5 pt-10 pb-16 text-center" style={{ backgroundColor: primaryColor, color: textColor }}>
+    <header
+      className="px-5 pt-10 pb-16 text-center"
+      style={{ ...cardBackgroundStyle(primaryColor, backgroundUrl), color: textColor }}
+    >
       <div className="mx-auto flex max-w-md flex-col items-center gap-3">
         <BusinessLogo name={name} logoUrl={logoUrl} primaryColor={primaryColor} textColor={textColor} size={72} />
         <h1 className="text-2xl font-bold tracking-tight">{name}</h1>

@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { BACKGROUND_OVERLAY_ALPHA } from "@/lib/cards/card-style";
 import { stampGrid } from "@/lib/cards/stamp-layout";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -18,14 +19,18 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/img/stamps/
 
   const { data: program } = await createAdminClient()
     .from("programs")
-    .select("stamps_required, businesses(primary_color, text_color)")
+    .select("stamps_required, businesses(primary_color, text_color, card_background_url)")
     .eq("id", programId)
-    .maybeSingle<{ stamps_required: number; businesses: { primary_color: string; text_color: string } }>();
+    .maybeSingle<{
+      stamps_required: number;
+      businesses: { primary_color: string; text_color: string; card_background_url: string | null };
+    }>();
   if (!program) return new Response("Not found", { status: 404 });
 
   const required = program.stamps_required;
   const bg = program.businesses.primary_color;
   const fg = program.businesses.text_color;
+  const backgroundUrl = program.businesses.card_background_url;
   const reward = count >= required;
   const filled = Math.min(count, required);
   const { rows, cols } = stampGrid(required);
@@ -55,8 +60,31 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/img/stamps/
           justifyContent: "center",
           backgroundColor: bg,
           gap,
+          position: "relative",
         }}
       >
+        {backgroundUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- Satori solo entiende <img>
+          <img
+            src={backgroundUrl}
+            alt=""
+            width={WIDTH}
+            height={HEIGHT}
+            style={{ position: "absolute", top: 0, left: 0, width: WIDTH, height: HEIGHT, objectFit: "cover" }}
+          />
+        ) : null}
+        {backgroundUrl ? (
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: WIDTH,
+              height: HEIGHT,
+              backgroundColor: `${bg}${BACKGROUND_OVERLAY_ALPHA}`,
+            }}
+          />
+        ) : null}
         {grid.map((row, r) => (
           <div key={r} style={{ display: "flex", gap }}>
             {row.map((on, i) => {

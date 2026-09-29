@@ -1,10 +1,11 @@
 import * as React from "react"
-import { Input as InputPrimitive } from "@base-ui/react/input"
 import { cn } from "cn"
 
+// Input nativo (no el de Base UI): los formularios usan defaultValue que cambia
+// tras guardar (revalidación) y Base UI advierte al cambiar un campo no controlado.
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   return (
-    <InputPrimitive
+    <input
       type={type}
       data-slot="input"
       className={cn(

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BusinessLogo } from "@/components/customer/brand-header";
 import { InAppBrowserNotice } from "@/components/customer/in-app-browser-notice";
+import { cardBackgroundStyle } from "@/lib/cards/card-style";
 import { getCardByAccessToken } from "@/lib/cards/public-card";
 import { detectDevice } from "@/lib/domain/device";
 import { encodeCardQr } from "@/lib/domain/qr";
@@ -9,6 +10,7 @@ import { userAgent } from "@/lib/request";
 import { appleWallet, googleWallet } from "@/lib/wallet";
 import { AutoRefresh } from "./auto-refresh";
 import { CardQr } from "./card-qr";
+import { StampGrid } from "./stamp-grid";
 import { WalletActions } from "./wallet-actions";
 
 export const metadata: Metadata = {
@@ -26,7 +28,6 @@ export default async function WebCardPage({ params }: PageProps<"/t/[accessToken
   const device = detectDevice(await userAgent());
   const rewardAvailable = card.stampsCount >= program.stampsRequired;
   const remaining = Math.max(0, program.stampsRequired - card.stampsCount);
-  const stampsImg = `/api/img/stamps/${program.id}/${card.stampsCount}?v=${program.designVersion}`;
 
   return (
     <div className="min-h-dvh bg-muted/50 pb-12">
@@ -36,7 +37,7 @@ export default async function WebCardPage({ params }: PageProps<"/t/[accessToken
 
         <article
           className="overflow-hidden rounded-3xl shadow-xl"
-          style={{ backgroundColor: business.primaryColor, color: business.textColor }}
+          style={{ ...cardBackgroundStyle(business.primaryColor, business.backgroundUrl), color: business.textColor }}
         >
           <div className="flex items-center gap-3 px-5 pt-5">
             <BusinessLogo
@@ -57,13 +58,11 @@ export default async function WebCardPage({ params }: PageProps<"/t/[accessToken
             <p className="text-xl font-semibold">{card.customerName}</p>
           </div>
 
-          {/* eslint-disable-next-line @next/next/no-img-element -- imagen dinámica cacheada inmutable */}
-          <img
-            src={stampsImg}
-            alt={`${card.stampsCount} de ${program.stampsRequired} sellos`}
-            width={1032}
-            height={336}
-            className="mt-3 h-auto w-full"
+          <StampGrid
+            count={card.stampsCount}
+            required={program.stampsRequired}
+            primaryColor={business.primaryColor}
+            textColor={business.textColor}
           />
 
           <div className="flex items-end justify-between gap-3 px-5 pb-5">

@@ -2,51 +2,40 @@ import { NextResponse } from "next/server";
 import { after } from "next/server";
 import { writeAudit } from "@/lib/audit";
 import { getBusinessWithProgram } from "@/lib/auth/business";
-import { staffForApi } from "@/lib/auth/staff";
+import { staffForApi, type StaffContext } from "@/lib/auth/staff";
 import { jsonError } from "@/lib/http/json";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { syncProgramCards } from "@/lib/wallet";
 
-const MAX_BYTES = 2 * 1024 * 1024;
-const EXT: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" };
+type Kind = "logo" | "background";
 
-/**
- * Subida del logo (Route Handler para no chocar con el límite de 1 MB de las
- * Server Actions). Solo owner del negocio o super_admin en "ver como".
- */
-export async function POST(request: Request) {
-  const ctx = await staffForApi(["owner"]);
-  if (!ctx || !ctx.businessId) return jsonError("No autorizado", 403);
+// El fondo también se dibuja en la imagen de Google Wallet (Satori), que no
+// soporta WEBP: por eso el fondo solo admite PNG o JPG.
+const RULES: Record<Kind, { column: "logo_url" | "card_background_url"; maxBytes: number; types: Record<string, string> }> = {
+  logo: {
+    column: "logo_url",
+    maxBytes: 2 * 1024 * 1024,
+    types: { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" },
+  },
+  background: {
+    column: "card_background_url",
+    maxBytes: 5 * 1024 * 1024,
+    types: { "image/png": "png", "image/jpeg": "jpg" },
+  },
+};
 
-  let file: File | null = null;
-  try {
-    const form = await request.formData();
-    const value = form.get("logo");
-    file = value instanceof File ? value : null;
-  } catch {
-    return jsonError("Solicitud inválida");
-  }
-  if (!file || file.size === 0) return jsonError("Selecciona una imagen");
-  const ext = EXT[file.type];
-  if (!ext) return jsonError("Formato no permitido (usa PNG, JPG o WEBP)");
-  if (file.size > MAX_BYTES) return jsonError("La imagen supera 2 MB");
+function parseKind(value: unknown): Kind | null {
+  return value === "logo" || value === "background" ? value : null;
+}
 
-  const { business, program } = await getBusinessWithProgram(ctx.businessId);
+/** Guarda la URL, incrementa design_version y sincroniza Wallet. */
+async function saveImage(ctx: StaffContext, kind: Kind, url: string | null) {
+  const { business, program } = await getBusinessWithProgram(ctx.businessId!);
   if (!business) return jsonError("Negocio no encontrado", 404);
 
   const admin = createAdminClient();
-  const path = `${business.id}/${Date.now()}.${ext}`;
-  const { error: uploadError } = await admin.storage
-    .from("logos")
-    .upload(path, await file.arrayBuffer(), { contentType: file.type, upsert: false, cacheControl: "31536000" });
-  if (uploadError) {
-    console.error("[panel] logo upload", uploadError.message);
-    return jsonError("No se pudo subir la imagen", 500);
-  }
-  const { data: pub } = admin.storage.from("logos").getPublicUrl(path);
-
-  const { error } = await admin.from("businesses").update({ logo_url: pub.publicUrl }).eq("id", business.id);
-  if (error) return jsonError("No se pudo guardar el logo", 500);
+  const { error } = await admin.from("businesses").update({ [RULES[kind].column]: url }).eq("id", business.id);
+  if (error) return jsonError("No se pudo guardar la imagen", 500);
   if (program) {
     await admin.from("programs").update({ design_version: program.design_version + 1 }).eq("id", program.id);
     after(() => syncProgramCards(program.id));
@@ -58,9 +47,55 @@ export async function POST(request: Request) {
     action: "business.update",
     entityType: "business",
     entityId: business.id,
-    metadata: { fields: ["logo_url"] },
+    metadata: { fields: [RULES[kind].column], removed: url === null },
     impersonating: ctx.impersonating,
   });
+  return NextResponse.json({ ok: true, url });
+}
 
-  return NextResponse.json({ ok: true, logoUrl: pub.publicUrl });
+/**
+ * Subida de logo o fondo de la tarjeta (Route Handler para no chocar con el
+ * límite de 1 MB de las Server Actions). Solo owner o super_admin en "ver como".
+ */
+export async function POST(request: Request) {
+  const ctx = await staffForApi(["owner"]);
+  if (!ctx || !ctx.businessId) return jsonError("No autorizado", 403);
+
+  let file: File | null = null;
+  let kind: Kind | null = null;
+  try {
+    const form = await request.formData();
+    kind = parseKind(form.get("kind") ?? "logo");
+    const value = form.get("file") ?? form.get("logo");
+    file = value instanceof File ? value : null;
+  } catch {
+    return jsonError("Solicitud inválida");
+  }
+  if (!kind) return jsonError("Tipo de imagen inválido");
+  const rule = RULES[kind];
+  if (!file || file.size === 0) return jsonError("Selecciona una imagen");
+  const ext = rule.types[file.type];
+  if (!ext) return jsonError(kind === "background" ? "Usa una imagen PNG o JPG" : "Formato no permitido (usa PNG, JPG o WEBP)");
+  if (file.size > rule.maxBytes) return jsonError(`La imagen supera ${rule.maxBytes / 1024 / 1024} MB`);
+
+  const admin = createAdminClient();
+  const path = `${ctx.businessId}/${kind === "background" ? "bg-" : ""}${Date.now()}.${ext}`;
+  const { error: uploadError } = await admin.storage
+    .from("logos")
+    .upload(path, await file.arrayBuffer(), { contentType: file.type, upsert: false, cacheControl: "31536000" });
+  if (uploadError) {
+    console.error("[panel] image upload", uploadError.message);
+    return jsonError("No se pudo subir la imagen", 500);
+  }
+  const { data: pub } = admin.storage.from("logos").getPublicUrl(path);
+  return saveImage(ctx, kind, pub.publicUrl);
+}
+
+/** Quita el fondo (vuelve al color sólido) o el logo (vuelve a la inicial). */
+export async function DELETE(request: Request) {
+  const ctx = await staffForApi(["owner"]);
+  if (!ctx || !ctx.businessId) return jsonError("No autorizado", 403);
+  const kind = parseKind(new URL(request.url).searchParams.get("kind"));
+  if (!kind) return jsonError("Tipo de imagen inválido");
+  return saveImage(ctx, kind, null);
 }

@@ -22,6 +22,7 @@ export interface PublicCardView {
     name: string;
     slug: string;
     logoUrl: string | null;
+    backgroundUrl: string | null;
     primaryColor: string;
     textColor: string;
     status: "trial" | "active" | "suspended";
@@ -42,6 +43,7 @@ interface Row {
     name: string;
     slug: string;
     logo_url: string | null;
+    card_background_url: string | null;
     primary_color: string;
     text_color: string;
     status: "trial" | "active" | "suspended";
@@ -54,7 +56,7 @@ export const getCardByAccessToken = cache(async (accessToken: string): Promise<P
   const { data } = await createAdminClient()
     .from("cards")
     .select(
-      "id, public_code, access_token, stamps_count, total_redemptions, status, customers(full_name, deleted_at), programs(id, card_title, stamps_required, reward_description, design_version), businesses(id, name, slug, logo_url, primary_color, text_color, status)",
+      "id, public_code, access_token, stamps_count, total_redemptions, status, customers(full_name, deleted_at), programs(id, card_title, stamps_required, reward_description, design_version), businesses(id, name, slug, logo_url, card_background_url, primary_color, text_color, status)",
     )
     .eq("access_token", accessToken)
     .maybeSingle<Row>();
@@ -80,6 +82,7 @@ export const getCardByAccessToken = cache(async (accessToken: string): Promise<P
       name: data.businesses.name,
       slug: data.businesses.slug,
       logoUrl: data.businesses.logo_url,
+      backgroundUrl: data.businesses.card_background_url,
       primaryColor: data.businesses.primary_color,
       textColor: data.businesses.text_color,
       status: data.businesses.status,

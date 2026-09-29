@@ -19,6 +19,7 @@ export default async function ProgramPage() {
         programId={program.id}
         designVersion={program.design_version}
         logoUrl={business.logo_url}
+        backgroundUrl={business.card_background_url}
         initial={{
           cardTitle: program.card_title,
           stampsRequired: program.stamps_required,

@@ -13,6 +13,8 @@ export interface Business {
   name: string;
   slug: string;
   logo_url: string | null;
+  /** Imagen de fondo de la tarjeta; null = color sólido (primary_color). */
+  card_background_url: string | null;
   primary_color: string;
   text_color: string;
   default_country: string;

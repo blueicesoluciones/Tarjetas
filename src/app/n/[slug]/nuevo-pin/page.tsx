@@ -20,6 +20,7 @@ export default async function NewPinPage({ params }: PageProps<"/n/[slug]/nuevo-
         logoUrl={business.logo_url}
         primaryColor={business.primary_color}
         textColor={business.text_color}
+        backgroundUrl={business.card_background_url}
         subtitle="Crea un PIN nuevo para tu tarjeta"
       />
       <main className="mx-auto -mt-10 max-w-md px-4 pb-12">

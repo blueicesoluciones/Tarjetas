@@ -40,7 +40,7 @@ export function ShareQr({ url, fileName }: { url: string; fileName: string }) {
         </Button>
       </div>
       <Button type="button" className="w-full" onClick={download}>
-        <Download /> Descargar PNG
+        <Download /> Descargar solo QR (PNG)
       </Button>
     </div>
   );

@@ -11,7 +11,8 @@ const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https:",
+  // Supabase Storage (logos y fondos): en local se sirve por http://127.0.0.1:54321.
+  `img-src 'self' data: blob: https: ${supabaseOrigin}`.trim(),
   "font-src 'self' data:",
   "media-src 'self' blob:",
   `connect-src 'self' ${supabaseOrigin} ${supabaseWs}`.trim(),

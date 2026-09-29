@@ -44,6 +44,7 @@ export default async function BusinessLandingPage({ params }: PageProps<"/n/[slu
         logoUrl={business.logo_url}
         primaryColor={business.primary_color}
         textColor={business.text_color}
+        backgroundUrl={business.card_background_url}
         subtitle={`Junta ${program.stamps_required} sellos y obtén: ${program.reward_description}`}
       />
       <main className="mx-auto -mt-10 max-w-md space-y-4 px-4 pb-12">
