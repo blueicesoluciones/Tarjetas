@@ -36,11 +36,11 @@ Plataforma SaaS multi-negocio (multi-tenant) que se vende a emprendimientos (caf
 | Base de datos | Supabase plan Free |
 | Dominio | Pendiente de compra; mientras tanto usar `*.vercel.app` |
 | Pagos (cobro a negocios) | Fuera de alcance por ahora (Fase 6) |
+| Emails | **No se envían correos.** El super admin crea todos los usuarios (dueños y cajeros) con email y contraseña y se los entrega |
 
 ### Advertencias de los planes gratuitos (tenerlas en cuenta)
 
 - **Supabase Free pausa el proyecto tras ~7 días sin actividad.** Durante el desarrollo no es problema; antes del piloto con negocios reales hay que evaluar pasar a Pro (25 USD/mes) o mantener actividad.
-- **El SMTP incluido de Supabase Auth tiene un límite muy bajo de emails por hora** y es solo para pruebas. Configurar SMTP propio con Resend (plan gratis) antes de invitar usuarios reales.
 - **El plan Hobby de Vercel es para uso no comercial** según sus términos. Sirve para desarrollo y pruebas; cuando se cobre a negocios hay que pasar a Vercel Pro (20 USD/mes) o migrar a otro hosting.
 
 ---
@@ -64,7 +64,6 @@ Plataforma SaaS multi-negocio (multi-tenant) que se vende a emprendimientos (caf
 | Imágenes dinámicas de sellos | `@vercel/og` (`ImageResponse`) |
 | Google Wallet | REST API de Google Wallet + `google-auth-library` + `jsonwebtoken` |
 | Apple Wallet (futuro) | `passkit-generator` + push APNs por HTTP/2 con clave `.p8` |
-| Emails | Resend (plan gratis) |
 | Tests | Vitest (lógica de negocio y funciones puras) |
 | Deploy | Vercel |
 
@@ -96,7 +95,8 @@ Plataforma SaaS multi-negocio (multi-tenant) que se vende a emprendimientos (caf
 | Ver/crear/editar/suspender negocios | Todos | — | — | — |
 | Entrar a un negocio en modo "ver como" | Sí | — | — | — |
 | Editar programa (sellos, premio, diseño) | Todos | Su negocio | — | — |
-| Gestionar cajeros | Todos | Su negocio | — | — |
+| Crear usuarios (dueños y cajeros) y cambiar contraseñas | Todos | — | — | — |
+| Desactivar/reactivar cajeros | Todos | Su negocio | — | — |
 | Ver lista de clientes y detalle | Todos | Su negocio | Solo búsqueda para sellar | — |
 | Escanear y sumar sello | Sí | Su negocio | Su negocio | — |
 | Sumar/restar sellos manualmente | Sí | Su negocio | — | — |
@@ -128,7 +128,7 @@ Plataforma SaaS multi-negocio (multi-tenant) que se vende a emprendimientos (caf
 
 1. Super admin crea el negocio: nombre, slug, logo, colores, zona horaria.
 2. Crea el programa: sellos requeridos (ej. 10), descripción del premio, cooldown.
-3. Invita al dueño por email; el dueño define su contraseña.
+3. Crea el usuario del dueño con email y contraseña, y le entrega las credenciales (no se envían correos). Los cajeros también los crea el super admin desde el detalle del negocio.
 4. El sistema crea la clase de Google Wallet del negocio (ver sección 11).
 5. El negocio queda con estado `active` y su enlace público `/n/[slug]` operativo.
 
@@ -170,9 +170,9 @@ Entrada: el cliente abre `/n/[slug]` desde un QR impreso, enlace compartido por 
 
 1. En la pantalla de ingreso, enlace "Olvidé mi PIN" que muestra: "Pide al negocio que restablezca tu PIN" (y opcionalmente el WhatsApp del negocio si lo configuró).
 2. El owner busca al cliente por teléfono en `/panel/clientes`, verifica su identidad (en persona o preguntando el nombre) y pulsa **"Restablecer PIN"**.
-3. El sistema genera un **PIN temporal aleatorio de 4 dígitos**, lo muestra **una sola vez** en pantalla al owner, guarda solo su hash, marca `pin_must_change = true`, `pin_temp_expires_at = now() + 24h`, y resetea los contadores de intentos y bloqueo.
+3. El owner puede **escribir el PIN temporal que quiera (opcional)**; si lo deja vacío, el sistema genera uno aleatorio de 4 dígitos. Se muestra **una sola vez** en pantalla al owner, guarda solo su hash, marca `pin_must_change = true`, `pin_temp_expires_at = now() + 24h`, y resetea los contadores de intentos y bloqueo.
 4. El owner le dice el PIN temporal al cliente.
-5. El cliente ingresa con teléfono + PIN temporal y el sistema lo obliga a crear un PIN nuevo.
+5. El cliente escanea el QR del negocio (`/n/[slug]`), toca «Ya tengo tarjeta», ingresa con teléfono + PIN temporal y el sistema lo obliga a crear un PIN nuevo que el owner no conoce.
 6. Si el temporal vence sin usarse, deja de funcionar y hay que restablecer de nuevo.
 7. Todo restablecimiento queda en `audit_logs` (quién, cuándo, a qué cliente).
 
@@ -617,7 +617,7 @@ src/app/
     clientes/page.tsx              # búsqueda y lista
     clientes/[id]/page.tsx         # detalle, historial, ajuste manual, restablecer PIN, regenerar enlace
     programa/page.tsx              # sellos, premio, cooldown, diseño con vista previa
-    equipo/page.tsx                # cajeros: invitar, desactivar
+    equipo/page.tsx                # equipo: ver y desactivar cajeros
     actividad/page.tsx             # historial de eventos del negocio
     compartir/page.tsx             # QR descargable/imprimible del enlace de inscripción
 
@@ -665,10 +665,6 @@ CUSTOMER_SESSION_SECRET=            # string aleatorio largo
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=          # solo servidor
-
-# Email
-RESEND_API_KEY=
-EMAIL_FROM=
 
 # Google Wallet
 GOOGLE_WALLET_ISSUER_ID=
@@ -758,21 +754,21 @@ Trabajar **una tarea a la vez**, con commit al terminar cada una. Cada fase tien
 1. Resumen con métricas básicas (clientes totales, sellos hoy/semana, canjes).
 2. Clientes: lista, búsqueda, detalle con historial, ajuste manual con motivo, restablecer PIN (muestra el temporal una sola vez), regenerar enlace, eliminar cliente.
 3. Programa: editar sellos, premio, cooldown, logo, colores, con vista previa de la tarjeta; al guardar, incrementar `design_version` y sincronizar Wallet por lotes.
-4. Equipo: invitar cajeros por email, desactivar.
+4. Equipo: ver el equipo y desactivar/reactivar cajeros (los usuarios los crea el super admin).
 5. Actividad: historial de eventos filtrable.
 6. Compartir: QR del enlace de inscripción descargable en PNG y versión imprimible.
 
 **Aceptación:** un owner puede operar su negocio completo sin ayuda del super admin.
 
 ### Fase 7 — Panel de super admin
-1. Lista y alta de negocios (crea negocio, programa, invita owner, crea clase de Google).
+1. Lista y alta de negocios (crea negocio, programa, usuario owner con contraseña, crea clase de Google).
+   Detalle con clientes y tarjetas del negocio, y usuarios (crear, cambiar contraseña, desactivar).
 2. Detalle: editar, suspender (una tarjeta de negocio suspendido no acepta sellos y muestra aviso), entrar como.
 3. Dashboard global y vista de auditoría.
 4. Indicador del modo de Google Wallet (demo/producción) y errores de sincronización recientes.
 
 ### Fase 8 — Preparación para piloto
 1. Páginas de privacidad y términos.
-2. SMTP propio con Resend en Supabase Auth.
 3. Dominio propio conectado a Vercel.
 4. Revisión de seguridad: encabezados, RLS, secretos, rate limits.
 5. Solicitud de acceso a producción de Google Wallet.
@@ -801,6 +797,8 @@ Trabajar **una tarea a la vez**, con commit al terminar cada una. Cada fase tien
 8. Tarjeta web siempre disponible; Wallet como extra sobre la misma tarjeta.
 9. Google Wallet primero (demo); Apple después, detrás de un feature flag.
 10. Supabase Free + Vercel Hobby al inicio.
+11. Sin envío de correos: el super admin crea todos los usuarios de staff con contraseña.
+12. El PIN temporal lo puede elegir el owner (opcional) o se genera aleatorio.
 
 ## 19. Pendientes por definir
 

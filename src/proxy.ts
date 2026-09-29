@@ -13,7 +13,6 @@ export const config = {
     "/panel/:path*",
     "/escaner/:path*",
     "/login",
-    "/auth/:path*",
     "/api/staff/:path*",
   ],
 };

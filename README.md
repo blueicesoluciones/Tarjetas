@@ -96,8 +96,10 @@ src/
   (evita revertir un sello anterior a un canje).
 - Eliminar un cliente anonimiza sus datos (`deleted_at`, nombre genérico, teléfono reemplazado), bloquea la tarjeta
   y conserva los eventos para estadísticas. Se agregó la columna `customers.deleted_at`.
-- Invitaciones de staff: `auth.admin.generateLink` + email propio vía Resend con enlace a `/auth/confirm`.
-  Sin `RESEND_API_KEY` el enlace se muestra en pantalla (útil en desarrollo).
+- **No se envían correos.** El super admin crea dueños y cajeros con email y contraseña
+  (`auth.admin.createUser`, `src/lib/staff-users.ts`) y puede cambiar contraseñas y desactivar usuarios
+  desde `/admin/negocios/[id]`. Ahí también ve los clientes y tarjetas del negocio («Gestionar» abre la ficha en modo ver como).
+- Restablecer PIN: el dueño puede escribir el PIN temporal (opcional) o dejar que se genere uno.
 - Rutas de staff de tarjetas: `/api/staff/cards/[cardRef]` donde `cardRef` es el `public_code` (GET y `stamp`)
   o el id de la tarjeta (`redeem`, `adjust`). Next no permite dos nombres de segmento dinámico distintos en el mismo nivel.
 

@@ -29,12 +29,15 @@ export async function customerForOwner(ctx: StaffContext, customerId: string) {
   return data;
 }
 
-/** Restablece el PIN: devuelve el PIN temporal (se muestra una sola vez). */
-export async function resetCustomerPin(ctx: StaffContext, customerId: string) {
+/**
+ * Restablece el PIN. El dueño puede elegir el PIN temporal o dejar que se genere.
+ * Devuelve el PIN temporal (se muestra una sola vez).
+ */
+export async function resetCustomerPin(ctx: StaffContext, customerId: string, chosenPin?: string) {
   const customer = await customerForOwner(ctx, customerId);
   if (!customer) return null;
 
-  const tempPin = generateTempPin((max) => randomInt(max));
+  const tempPin = chosenPin ?? generateTempPin((max) => randomInt(max));
   const lock = resetLockState();
   const { error } = await createAdminClient()
     .from("customers")
@@ -55,6 +58,7 @@ export async function resetCustomerPin(ctx: StaffContext, customerId: string) {
     action: "pin.reset",
     entityType: "customer",
     entityId: customer.id,
+    metadata: { chosen_by_staff: Boolean(chosenPin) },
     impersonating: ctx.impersonating,
   });
   return { tempPin, expiresInHours: TEMP_PIN_HOURS };

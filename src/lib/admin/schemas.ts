@@ -34,6 +34,7 @@ export const programFieldsSchema = z.object({
 export const ownerFieldsSchema = z.object({
   owner_name: z.string().trim().min(2, "Ingresa el nombre del dueño").max(80),
   owner_email: z.string().trim().toLowerCase().email("Email del dueño inválido"),
+  owner_password: z.string().min(8, "La contraseña del dueño debe tener al menos 8 caracteres").max(72),
 });
 
 export const createBusinessSchema = businessFieldsSchema.extend({

@@ -53,22 +53,3 @@ export async function signOut() {
   (await cookies()).delete(ACTING_BUSINESS_COOKIE);
   redirect("/login");
 }
-
-const passwordSchema = z
-  .object({
-    password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
-    confirm: z.string(),
-  })
-  .refine((d) => d.password === d.confirm, { message: "Las contraseñas no coinciden" });
-
-export async function setPassword(_prev: FormState, formData: FormData): Promise<FormState> {
-  const parsed = passwordSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message };
-
-  const supabase = await createClient();
-  const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
-  if (error) return { error: "No se pudo guardar la contraseña. Pide una nueva invitación." };
-
-  const ctx = await getStaffContext();
-  redirect(ctx ? homeForRole(ctx.profile.role) : "/login");
-}

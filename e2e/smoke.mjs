@@ -1,7 +1,8 @@
 // Prueba de humo end-to-end contra el entorno local (npm run dev + supabase start + seed).
 // Usa el Chrome instalado en el sistema: npm run test:e2e
 // Recorre: inscripción de cliente → tarjeta web → cajero busca y suma sello →
-// dueño recorre el panel → super admin crea negocio → el dueño acepta la invitación.
+// dueño restablece PIN con uno temporal elegido → el cliente lo cambia → super admin
+// ve los clientes, crea un negocio con su dueño y el dueño ingresa.
 import { chromium, devices } from "playwright-core";
 
 const B = process.env.E2E_BASE_URL ?? "http://localhost:3000";
@@ -84,11 +85,46 @@ try {
   expect(!owner.url().includes("/admin"), "el dueño no puede abrir /admin");
   ok("dueño recorre el panel y no entra a /admin");
 
-  // 5. Super admin crea un negocio e invita al dueño
+  // 5. Dueño restablece el PIN con uno temporal elegido; el cliente lo cambia
+  await owner.goto(`${B}/panel/clientes?q=${encodeURIComponent(name)}`);
+  await owner.getByText(name).click();
+  await owner.waitForURL(/\/panel\/clientes\/.+/);
+  await owner.getByRole("button", { name: "Restablecer PIN" }).click();
+  await owner.getByPlaceholder("····").fill("8642");
+  await owner.getByRole("button", { name: "Sí, restablecer" }).click();
+  await owner.getByText("8642").waitFor();
+  ok("dueño restablece el PIN con un temporal elegido");
+
+  const returning = await (await browser.newContext({ ...devices["iPhone 13"] })).newPage();
+  watch(returning, "cliente-reingreso");
+  await returning.goto(`${B}/n/cafe-luna/ingresar`);
+  await returning.fill("#phone", `9 7${run.slice(0, 3)} ${run.slice(3)}0`);
+  await returning.fill("#pin", "8642");
+  await returning.locator("main button[type=submit]").first().click();
+  await returning.waitForURL(/nuevo-pin/);
+  await returning.fill("#pin", "5173");
+  await returning.fill("#pinConfirm", "5173");
+  await returning.locator("main button[type=submit]").click();
+  await returning.waitForURL(/\/t\//);
+  ok("cliente entra con el PIN temporal y crea uno nuevo");
+
+  // 6. Super admin ve los clientes del negocio y crea un negocio con su dueño
   const admin = await (await browser.newContext()).newPage();
   watch(admin, "admin");
   await login(admin, "admin@tarjetas.test");
   await admin.waitForURL(/\/admin/);
+  await admin.goto(`${B}/admin/negocios/11111111-1111-1111-1111-111111111111`);
+  await admin.getByText(name).waitFor();
+  ok("super admin ve los clientes y tarjetas del negocio");
+  const programForm = admin.locator("form", { has: admin.locator("[name=reward_description]") });
+  await programForm.locator("[name=reward_description]").fill("Un café gratis (e2e)");
+  await programForm.locator("button[type=submit]").click();
+  await admin.getByText("Programa actualizado").waitFor();
+  await programForm.locator("[name=reward_description]").fill("Un café gratis");
+  await programForm.locator("button[type=submit]").click();
+  await admin.getByText("Programa actualizado").waitFor();
+  ok("super admin edita y guarda el programa");
+
   await admin.goto(`${B}/admin/negocios/nuevo`);
   await admin.fill("[name=name]", `Negocio E2E ${run}`);
   await admin.fill("[name=card_title]", "Club E2E");
@@ -96,21 +132,37 @@ try {
   await admin.fill("[name=reward_description]", "Premio de prueba");
   await admin.fill("[name=owner_name]", "Dueño E2E");
   await admin.fill("[name=owner_email]", `owner-${run}@e2e.test`);
+  await admin.fill("[name=owner_password]", "ClaveSegura1");
   await admin.locator("main button[type=submit]").last().click();
-  const link = await admin.locator("code").first().textContent({ timeout: 15000 });
-  expect(link?.includes("/auth/confirm"), "se genera enlace de invitación");
-  ok("super admin crea negocio e invitación");
+  await admin.getByText("Negocio creado").waitFor();
+  ok("super admin crea negocio con su dueño");
 
-  // 6. El nuevo dueño acepta la invitación
-  const invited = await (await browser.newContext()).newPage();
-  watch(invited, "invitado");
-  await invited.goto(link);
-  await invited.waitForURL(/definir-clave/);
-  await invited.fill("#password", "ClaveSegura1");
-  await invited.fill("#confirm", "ClaveSegura1");
-  await invited.locator("main button[type=submit]").click();
-  await invited.waitForURL(/\/panel/);
-  ok("nuevo dueño define contraseña y entra a su panel");
+  await admin.getByRole("link", { name: "Ver negocio" }).click();
+  await admin.waitForURL(/\/admin\/negocios\/[0-9a-f-]{36}/);
+  const userForm = admin.locator("form", { has: admin.locator("select[name=role]") });
+  await userForm.locator("[name=full_name]").fill("Cajero E2E");
+  await userForm.locator("[name=email]").fill(`cajero-${run}@e2e.test`);
+  await userForm.locator("[name=password]").fill("ClaveCajero1");
+  await userForm.locator("button[type=submit]").click();
+  await admin.getByText("Usuario creado").waitFor();
+  ok("super admin crea un cajero");
+
+  const newCashier = await (await browser.newContext({ ...devices["Pixel 7"] })).newPage();
+  await login(newCashier, `cajero-${run}@e2e.test`, "ClaveCajero1");
+  await newCashier.waitForURL(/\/escaner/);
+  ok("el cajero nuevo entra directo al escáner");
+
+  await admin.goto(`${B}/admin/negocios/11111111-1111-1111-1111-111111111111?q=${encodeURIComponent(name)}`);
+  await admin.getByRole("button", { name: "Gestionar →" }).first().click();
+  await admin.waitForURL(/\/panel\/clientes\/.+/);
+  await admin.getByText("Estás viendo como").waitFor();
+  ok("«Gestionar» abre la ficha del cliente en modo ver como");
+
+  const newOwner = await (await browser.newContext()).newPage();
+  watch(newOwner, "nuevo-dueño");
+  await login(newOwner, `owner-${run}@e2e.test`, "ClaveSegura1");
+  await newOwner.waitForURL(/\/panel/);
+  ok("el nuevo dueño ingresa con la contraseña definida por el admin");
 } finally {
   await browser.close();
 }

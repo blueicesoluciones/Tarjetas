@@ -4,10 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { z } from "zod";
-import { inviteStaff } from "@/lib/staff-invite";
-import { businessFieldsSchema, createBusinessSchema, ownerFieldsSchema, programFieldsSchema } from "@/lib/admin/schemas";
+import { businessFieldsSchema, createBusinessSchema, programFieldsSchema } from "@/lib/admin/schemas";
 import { writeAudit } from "@/lib/audit";
 import { getStaffContext } from "@/lib/auth/staff";
+import { createStaffUser, setStaffPassword, staffPasswordSchema, staffUserSchema } from "@/lib/staff-users";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureProgramEverywhere, syncProgramCards } from "@/lib/wallet";
 import type { Business, Program } from "@/types/db";
@@ -15,7 +15,6 @@ import type { Business, Program } from "@/types/db";
 export interface AdminFormState {
   error?: string;
   success?: string;
-  manualLink?: string;
   createdId?: string;
 }
 
@@ -30,7 +29,7 @@ function firstIssue(err: z.ZodError) {
 }
 
 // ---------------------------------------------------------------------------
-// Alta de negocio + programa + invitación al dueño
+// Alta de negocio + programa + usuario dueño
 // ---------------------------------------------------------------------------
 export async function createBusiness(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
   const ctx = await requireSuperAdmin();
@@ -92,39 +91,36 @@ export async function createBusiness(_prev: AdminFormState, formData: FormData):
     metadata: { stamps_required: d.stamps_required, reward_description: d.reward_description },
   });
 
-  const invite = await inviteStaff({
+  const owner = await createStaffUser({
+    full_name: d.owner_name,
     email: d.owner_email,
-    fullName: d.owner_name,
+    password: d.owner_password,
     role: "owner",
     businessId: business.id,
-    businessName: business.name,
   });
-  if (invite.ok) {
+  if (owner.ok) {
     await writeAudit({
       businessId: business.id,
       actorId: ctx.userId,
-      action: "staff.invite",
+      action: "staff.create",
       entityType: "profile",
-      entityId: invite.userId,
-      metadata: { role: "owner", email: d.owner_email, email_sent: invite.emailSent },
+      entityId: owner.userId,
+      metadata: { role: "owner", email: d.owner_email },
     });
   }
 
   after(() => ensureProgramEverywhere(program.id));
   revalidatePath("/admin/negocios");
 
-  if (!invite.ok) {
+  if (!owner.ok) {
     return {
       createdId: business.id,
-      error: `Negocio creado, pero la invitación falló: ${invite.error}. Puedes reintentarla desde el detalle.`,
+      error: `Negocio creado, pero no se pudo crear el dueño: ${owner.error}. Puedes crearlo desde el detalle.`,
     };
   }
   return {
     createdId: business.id,
-    success: invite.emailSent
-      ? `Negocio creado. Enviamos la invitación a ${d.owner_email}.`
-      : "Negocio creado. No hay email configurado: comparte este enlace con el dueño.",
-    manualLink: invite.inviteUrl ?? undefined,
+    success: `Negocio creado. El dueño ya puede ingresar en /login con ${d.owner_email} y la contraseña que definiste.`,
   };
 }
 
@@ -133,7 +129,7 @@ export async function createBusiness(_prev: AdminFormState, formData: FormData):
 // ---------------------------------------------------------------------------
 export async function updateBusiness(businessId: string, _prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
   const ctx = await requireSuperAdmin();
-  const id = z.string().uuid().parse(businessId);
+  const id = z.guid().parse(businessId);
   const parsed = businessFieldsSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const d = parsed.data;
@@ -190,7 +186,7 @@ async function bumpDesignAndSync(businessId: string) {
 // ---------------------------------------------------------------------------
 export async function updateProgram(programId: string, _prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
   const ctx = await requireSuperAdmin();
-  const id = z.string().uuid().parse(programId);
+  const id = z.guid().parse(programId);
   const parsed = programFieldsSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const d = parsed.data;
@@ -227,41 +223,82 @@ export async function updateProgram(programId: string, _prev: AdminFormState, fo
 }
 
 // ---------------------------------------------------------------------------
-// Invitar otro dueño
+// Usuarios del negocio (dueños y cajeros)
 // ---------------------------------------------------------------------------
-export async function inviteOwner(businessId: string, _prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
+export async function createBusinessUser(businessId: string, _prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
   const ctx = await requireSuperAdmin();
-  const id = z.string().uuid().parse(businessId);
-  const parsed = ownerFieldsSchema.safeParse(Object.fromEntries(formData));
+  const id = z.guid().parse(businessId);
+  const parsed = staffUserSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
-  const { data: business } = await createAdminClient()
-    .from("businesses")
-    .select("id, name")
-    .eq("id", id)
-    .maybeSingle<{ id: string; name: string }>();
+  const { data: business } = await createAdminClient().from("businesses").select("id").eq("id", id).maybeSingle();
   if (!business) return { error: "Negocio no encontrado" };
 
-  const invite = await inviteStaff({
-    email: parsed.data.owner_email,
-    fullName: parsed.data.owner_name,
-    role: "owner",
-    businessId: id,
-    businessName: business.name,
-  });
-  if (!invite.ok) return { error: invite.error };
+  const result = await createStaffUser({ ...parsed.data, businessId: id });
+  if (!result.ok) return { error: result.error };
 
   await writeAudit({
     businessId: id,
     actorId: ctx.userId,
-    action: "staff.invite",
+    action: "staff.create",
     entityType: "profile",
-    entityId: invite.userId,
-    metadata: { role: "owner", email: parsed.data.owner_email, email_sent: invite.emailSent },
+    entityId: result.userId,
+    metadata: { role: parsed.data.role, email: parsed.data.email },
   });
   revalidatePath(`/admin/negocios/${id}`);
-  return {
-    success: invite.emailSent ? `Invitación enviada a ${parsed.data.owner_email}` : "Usuario creado. Comparte este enlace:",
-    manualLink: invite.inviteUrl ?? undefined,
-  };
+  return { success: `Usuario creado. Puede ingresar en /login con ${parsed.data.email}.` };
+}
+
+const passwordFormSchema = z.object({ userId: z.guid(), password: staffPasswordSchema });
+
+export async function changeUserPassword(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
+  const ctx = await requireSuperAdmin();
+  const parsed = passwordFormSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+
+  const { data: profile } = await createAdminClient()
+    .from("profiles")
+    .select("id, business_id, role")
+    .eq("id", parsed.data.userId)
+    .maybeSingle<{ id: string; business_id: string | null; role: string }>();
+  if (!profile || profile.role === "super_admin") return { error: "Usuario no encontrado" };
+
+  const error = await setStaffPassword(profile.id, parsed.data.password);
+  if (error) return { error: `No se pudo cambiar la contraseña: ${error}` };
+
+  await writeAudit({
+    businessId: profile.business_id,
+    actorId: ctx.userId,
+    action: "staff.password_reset",
+    entityType: "profile",
+    entityId: profile.id,
+  });
+  return { success: "Contraseña actualizada" };
+}
+
+const activeSchema = z.object({ userId: z.guid(), active: z.enum(["true", "false"]) });
+
+export async function setUserActive(formData: FormData): Promise<void> {
+  const ctx = await requireSuperAdmin();
+  const parsed = activeSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const active = parsed.data.active === "true";
+  const admin = createAdminClient();
+  const { data: profile } = await admin
+    .from("profiles")
+    .update({ is_active: active })
+    .eq("id", parsed.data.userId)
+    .neq("role", "super_admin")
+    .select("business_id")
+    .maybeSingle<{ business_id: string }>();
+  if (!profile) return;
+
+  await writeAudit({
+    businessId: profile.business_id,
+    actorId: ctx.userId,
+    action: active ? "staff.activate" : "staff.deactivate",
+    entityType: "profile",
+    entityId: parsed.data.userId,
+  });
+  revalidatePath(`/admin/negocios/${profile.business_id}`);
 }

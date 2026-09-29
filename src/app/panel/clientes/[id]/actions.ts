@@ -9,7 +9,7 @@ export interface DeleteState {
   error?: string;
 }
 
-const schema = z.object({ customerId: z.string().uuid(), confirmName: z.string().trim() });
+const schema = z.object({ customerId: z.guid(), confirmName: z.string().trim() });
 
 export async function deleteCustomerAction(_prev: DeleteState, formData: FormData): Promise<DeleteState> {
   const parsed = schema.safeParse(Object.fromEntries(formData));

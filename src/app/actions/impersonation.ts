@@ -7,8 +7,9 @@ import { writeAudit } from "@/lib/audit";
 import { ACTING_BUSINESS_COOKIE, getStaffContext } from "@/lib/auth/staff";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export async function startImpersonation(businessId: string) {
-  const id = z.string().uuid().parse(businessId);
+/** `next`: ruta de /panel o /escaner a la que ir tras entrar (ej. ficha de un cliente). */
+export async function startImpersonation(businessId: string, next?: string) {
+  const id = z.guid().parse(businessId);
   const ctx = await getStaffContext();
   if (!ctx || ctx.profile.role !== "super_admin") redirect("/login");
 
@@ -31,7 +32,8 @@ export async function startImpersonation(businessId: string) {
     entityId: id,
     impersonating: true,
   });
-  redirect("/panel");
+  const safeNext = typeof next === "string" && /^\/(panel|escaner)(\/[\w-]*)*$/.test(next) ? next : "/panel";
+  redirect(safeNext);
 }
 
 export async function stopImpersonation() {

@@ -7,8 +7,6 @@ const serverEnvSchema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   CUSTOMER_SESSION_SECRET: z.string().min(32, "CUSTOMER_SESSION_SECRET debe tener al menos 32 caracteres"),
-  RESEND_API_KEY: z.string().optional(),
-  EMAIL_FROM: z.string().optional(),
   GOOGLE_WALLET_ISSUER_ID: z.string().optional(),
   GOOGLE_WALLET_SERVICE_ACCOUNT_JSON_BASE64: z.string().optional(),
   GOOGLE_WALLET_MODE: z.enum(["demo", "production"]).default("demo"),

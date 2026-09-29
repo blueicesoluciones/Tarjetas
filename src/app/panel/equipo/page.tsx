@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/panel/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getBusinessWithProgram } from "@/lib/auth/business";
 import { requireStaff } from "@/lib/auth/staff";
@@ -10,7 +10,6 @@ import { formatDate } from "@/lib/panel/format";
 import { createClient } from "@/lib/supabase/server";
 import type { Profile } from "@/types/db";
 import { setCashierActive } from "./actions";
-import { InviteForm } from "./invite-form";
 
 export const metadata: Metadata = { title: "Equipo" };
 
@@ -34,7 +33,7 @@ export default async function TeamPage() {
   return (
     <>
       <PageHeader title="Equipo" description="Personas que pueden sumar sellos en tu negocio." />
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+      <div className="space-y-4">
         <Card>
           <CardContent>
             <Table>
@@ -75,14 +74,9 @@ export default async function TeamPage() {
             </Table>
           </CardContent>
         </Card>
-        <Card className="self-start">
-          <CardHeader>
-            <CardTitle>Invitar cajero</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <InviteForm />
-          </CardContent>
-        </Card>
+        <p className="text-sm text-muted-foreground">
+          Para agregar un cajero o cambiar una contraseña, pídeselo al administrador de la plataforma.
+        </p>
       </div>
     </>
   );

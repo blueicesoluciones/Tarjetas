@@ -6,9 +6,13 @@ import { Copy } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
-async function post<T>(url: string): Promise<T & { ok: boolean; error?: string }> {
+async function post<T>(url: string, body?: unknown): Promise<T & { ok: boolean; error?: string }> {
   try {
-    const res = await fetch(url, { method: "POST" });
+    const res = await fetch(url, {
+      method: "POST",
+      headers: body ? { "Content-Type": "application/json" } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
     return (await res.json()) as T & { ok: boolean; error?: string };
   } catch {
     return { ok: false, error: "Sin conexión" } as T & { ok: boolean; error?: string };
@@ -29,10 +33,18 @@ export function ResetPinButton({ customerId }: { customerId: string }) {
   const [confirming, setConfirming] = useState(false);
   const [pending, setPending] = useState(false);
   const [tempPin, setTempPin] = useState<string | null>(null);
+  const [chosenPin, setChosenPin] = useState("");
 
   async function reset() {
+    if (chosenPin && !/^\d{4}$/.test(chosenPin)) {
+      toast.error("El PIN temporal debe tener 4 dígitos");
+      return;
+    }
     setPending(true);
-    const res = await post<{ tempPin?: string }>(`/api/staff/customers/${customerId}/reset-pin`);
+    const res = await post<{ tempPin?: string }>(
+      `/api/staff/customers/${customerId}/reset-pin`,
+      chosenPin ? { pin: chosenPin } : undefined,
+    );
     setPending(false);
     setConfirming(false);
     if (!res.ok || !res.tempPin) {
@@ -40,6 +52,7 @@ export function ResetPinButton({ customerId }: { customerId: string }) {
       return;
     }
     setTempPin(res.tempPin);
+    setChosenPin("");
     router.refresh();
   }
 
@@ -49,7 +62,8 @@ export function ResetPinButton({ customerId }: { customerId: string }) {
         <p className="text-sm font-medium">PIN temporal</p>
         <p className="my-2 text-center font-mono text-4xl font-bold tracking-[0.4em]">{tempPin}</p>
         <p className="text-xs">
-          Díselo al cliente. <strong>No se volverá a mostrar</strong> y vence en 24 horas. Al ingresar deberá crear un PIN nuevo.
+          Díselo al cliente. <strong>No se volverá a mostrar</strong> y vence en 24 horas. El cliente escanea el QR del negocio, toca
+          «Ya tengo tarjeta», ingresa con su teléfono y este PIN, y el sistema le pide crear uno nuevo que solo él conoce.
         </p>
         <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => setTempPin(null)}>
           Ya se lo di, ocultar
@@ -63,7 +77,18 @@ export function ResetPinButton({ customerId }: { customerId: string }) {
       <p className="text-sm font-medium">PIN</p>
       {confirming ? (
         <div className="space-y-2 rounded-lg bg-muted p-3 text-sm">
-          <p>¿Verificaste la identidad del cliente? Se generará un PIN temporal y el actual dejará de funcionar.</p>
+          <p>¿Verificaste la identidad del cliente? El PIN actual dejará de funcionar.</p>
+          <label className="block space-y-1">
+            <span className="text-xs text-muted-foreground">PIN temporal (opcional, si lo dejas vacío se genera uno)</span>
+            <input
+              value={chosenPin}
+              onChange={(e) => setChosenPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              inputMode="numeric"
+              maxLength={4}
+              placeholder="····"
+              className="h-9 w-28 rounded-md border bg-background px-2 text-center font-mono text-lg tracking-[0.3em]"
+            />
+          </label>
           <div className="flex gap-2">
             <Button type="button" size="sm" disabled={pending} onClick={reset}>
               {pending ? "Generando…" : "Sí, restablecer"}
