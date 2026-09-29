@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import type { DevicePlatform } from "@/lib/domain/device";
 
@@ -12,17 +12,17 @@ interface Props {
 }
 
 export function WalletActions({ accessToken, serverPlatform, googleEnabled, appleEnabled }: Props) {
-  const [platform, setPlatform] = useState<DevicePlatform>(serverPlatform);
   const [showOther, setShowOther] = useState(false);
-  const [url, setUrl] = useState("");
-
-  useEffect(() => {
-    // iPadOS se reporta como Mac: se refuerza con la pantalla táctil.
-    if (serverPlatform === "desktop" && /Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1) {
-      setPlatform("ios");
-    }
-    setUrl(window.location.href);
-  }, [serverPlatform]);
+  // iPadOS se reporta como Mac: en el cliente se refuerza con la pantalla táctil.
+  const platform = useSyncExternalStore<DevicePlatform>(
+    noopSubscribe,
+    () =>
+      serverPlatform === "desktop" && /Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1
+        ? "ios"
+        : serverPlatform,
+    () => serverPlatform,
+  );
+  const url = useSyncExternalStore(noopSubscribe, () => window.location.href, () => "");
 
   const google = (
     <a
@@ -84,6 +84,10 @@ export function WalletActions({ accessToken, serverPlatform, googleEnabled, appl
       ) : null}
     </section>
   );
+}
+
+function noopSubscribe() {
+  return () => {};
 }
 
 function GoogleWalletIcon() {
