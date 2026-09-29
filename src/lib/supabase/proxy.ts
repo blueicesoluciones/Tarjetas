@@ -33,7 +33,10 @@ export async function updateSession(request: NextRequest) {
   const isLoggedIn = Boolean(data?.claims?.sub);
 
   const { pathname } = request.nextUrl;
-  const isProtected = PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  // Archivos públicos de la PWA (manifest, service worker, íconos) no requieren sesión.
+  const isPublicAsset = /^\/escaner\/(sw\.js|manifest\.webmanifest|icons\/)/.test(pathname);
+  const isProtected =
+    !isPublicAsset && PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
   if (isProtected && !isLoggedIn) {
     const url = request.nextUrl.clone();
