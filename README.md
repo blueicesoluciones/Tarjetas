@@ -19,13 +19,17 @@ npm run db:start          # imprime API URL, anon key y service_role key
 npm run db:reset          # re-aplica supabase/migrations + supabase/seed.sql
 ```
 
-Completa `.env.local` con los valores que imprime `supabase start`
+Completa `.env.local` con los valores que imprime `supabase start` (o `npx supabase status`)
 (`NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321`, anon key, service role key) y genera el secreto de sesión:
 
 ```bash
 openssl rand -base64 48   # → CUSTOMER_SESSION_SECRET
 npm run dev
 ```
+
+Servicios locales: app `http://localhost:3000`, Supabase Studio `http://127.0.0.1:54323`.
+Para probar el escáner con la cámara desde tu celular en la misma red usa HTTPS
+(`npx next dev --experimental-https`), porque los navegadores solo dan acceso a la cámara en HTTPS o localhost.
 
 ### Usuarios de prueba (seed)
 
@@ -50,6 +54,7 @@ Tarjeta web de ejemplo: `/t/demo-token-cafe-luna-camila-000000000001`.
 | `npm test` | Tests unitarios (Vitest) |
 | `npm run typecheck` | Genera tipos de rutas y corre `tsc` |
 | `npm run lint` | ESLint |
+| `npm run test:e2e` | Prueba de humo en Chrome (requiere `npm run dev` y la base con seed) |
 | `npm run db:test` | Tests pgTAP de RLS y funciones de sellos (`supabase/tests`) |
 | `npm run db:reset` | Recrea la base local con migraciones y seed |
 | `npm run db:push` | Aplica migraciones al proyecto remoto enlazado |

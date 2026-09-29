@@ -15,7 +15,8 @@
     "db:reset": "supabase db reset",
     "db:test": "supabase test db",
     "db:push": "supabase db push",
-    "db:types": "supabase gen types typescript --local > src/types/supabase.ts"
+    "db:types": "supabase gen types typescript --local > src/types/supabase.ts",
+    "test:e2e": "node e2e/smoke.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -54,6 +55,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.7",
+    "playwright-core": "^1.63.0",
     "prettier": "^3.9.9",
     "prettier-plugin-tailwindcss": "^0.8.1",
     "supabase": "^2.118.0",

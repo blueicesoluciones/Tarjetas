@@ -74,11 +74,17 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/img/stamps/
                     border: `${Math.max(3, Math.round(size / 18))}px solid ${fg}`,
                     backgroundColor: on ? fg : "transparent",
                     opacity: on ? 1 : 0.55,
-                    color: bg,
-                    fontSize: size * 0.5,
                   }}
                 >
-                  {on ? "✓" : isLast ? <span style={{ color: fg, fontSize: size * 0.45 }}>★</span> : null}
+                  {on ? (
+                    <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24">
+                      <path d="M4 12.5l5 5L20 6.5" fill="none" stroke={bg} strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  ) : isLast ? (
+                    <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24">
+                      <path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.5L12 17.3l-5.9 3.2 1.3-6.5-4.9-4.6 6.6-.8z" fill={fg} />
+                    </svg>
+                  ) : null}
                 </div>
               );
             })}
