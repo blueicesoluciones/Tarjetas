@@ -18,6 +18,14 @@ begin
   perform set_config('request.jwt.claims', '{"role":"anon"}', true);
 end $$;
 
+-- Cantidad real de clientes del negocio A (como postgres, sin RLS), para que el
+-- test no dependa de que la base tenga solo el seed.
+select set_config(
+  'test.customers_a',
+  (select count(*)::text from public.customers where business_id = '11111111-1111-1111-1111-111111111111'),
+  true
+);
+
 -- ---------------------------------------------------------------------------
 -- Owner de Café Luna (negocio A)
 -- ---------------------------------------------------------------------------
@@ -27,7 +35,11 @@ select is((select count(*)::int from public.businesses), 1, 'owner A ve solo su 
 select is((select count(*)::int from public.businesses where slug = 'barberia-sol'), 0, 'owner A no ve el negocio B');
 select is((select count(*)::int from public.programs where business_id = '22222222-2222-2222-2222-222222222222'), 0, 'owner A no ve programas de B');
 select is((select count(*)::int from public.customers where business_id = '22222222-2222-2222-2222-222222222222'), 0, 'owner A no ve clientes de B');
-select is((select count(*)::int from public.customers), 2, 'owner A ve sus 2 clientes');
+select is(
+  (select count(*)::int from public.customers),
+  current_setting('test.customers_a')::int,
+  'owner A ve todos los clientes de su negocio y solo esos'
+);
 select is((select count(*)::int from public.cards where business_id = '22222222-2222-2222-2222-222222222222'), 0, 'owner A no ve tarjetas de B');
 select is((select count(*)::int from public.profiles where business_id = '22222222-2222-2222-2222-222222222222'), 0, 'owner A no ve staff de B');
 select is((select count(*)::int from public.audit_logs where business_id = '22222222-2222-2222-2222-222222222222'), 0, 'owner A no ve auditoría de B');
