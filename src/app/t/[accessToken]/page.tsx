@@ -19,8 +19,9 @@ export const metadata: Metadata = {
   referrer: "no-referrer",
 };
 
-export default async function WebCardPage({ params }: PageProps<"/t/[accessToken]">) {
+export default async function WebCardPage({ params, searchParams }: PageProps<"/t/[accessToken]">) {
   const { accessToken } = await params;
+  const { wallet } = await searchParams;
   const card = await getCardByAccessToken(accessToken);
   if (!card) notFound();
 
@@ -98,6 +99,12 @@ export default async function WebCardPage({ params }: PageProps<"/t/[accessToken
         ) : null}
         {card.status === "blocked" ? (
           <p className="rounded-xl bg-red-50 p-3 text-center text-sm text-red-900">Esta tarjeta está bloqueada. Contacta al negocio.</p>
+        ) : null}
+
+        {wallet === "error" ? (
+          <p role="alert" className="rounded-xl bg-amber-50 p-3 text-center text-sm text-amber-900">
+            No pudimos agregar la tarjeta a Google Wallet en este momento. Tu tarjeta web sigue funcionando; intenta más tarde.
+          </p>
         ) : null}
 
         <WalletActions

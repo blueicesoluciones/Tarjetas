@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCardByAccessToken } from "@/lib/cards/public-card";
-import { googleWallet, loadWalletCardData } from "@/lib/wallet";
-import { createCardEverywhere } from "@/lib/wallet";
+import { createCardEverywhere, googleWallet, loadWalletCardData } from "@/lib/wallet";
 
 /** Botón "Agregar a Google Wallet": asegura el objeto y redirige con el JWT. */
 export async function GET(request: Request, ctx: RouteContext<"/api/wallet/google/save/[accessToken]">) {
@@ -18,7 +17,9 @@ export async function GET(request: Request, ctx: RouteContext<"/api/wallet/googl
       await createCardEverywhere(card.id);
       data = await loadWalletCardData(card.id);
     }
-    if (!data) return NextResponse.redirect(back);
+    // Si Google rechazó la clase o el objeto (ej. imágenes no públicas), no se
+    // redirige a Google: el cliente vería un error allá.
+    if (!data?.googleObjectId) return NextResponse.redirect(back);
     const url = await googleWallet.getAddToWalletUrl(data);
     return NextResponse.redirect(url, { headers: { "Referrer-Policy": "no-referrer" } });
   } catch (err) {
