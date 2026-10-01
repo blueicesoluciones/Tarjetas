@@ -45,3 +45,4 @@ next-env.d.ts
 # Credenciales de cuentas de servicio (nunca al repo)
 blueice-wallet-*.json
 *service-account*.json
+env.vercel

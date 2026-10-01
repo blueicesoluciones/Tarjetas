@@ -17,10 +17,20 @@ export type ServerEnv = z.infer<typeof serverEnvSchema>;
 
 let cached: ServerEnv | null = null;
 
+/**
+ * URL pública de la app. Si NEXT_PUBLIC_APP_URL no está definida, en Vercel se
+ * usa su dominio de producción (variable de sistema VERCEL_PROJECT_PRODUCTION_URL).
+ */
+function resolveAppUrl(): string | undefined {
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
+  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL ?? process.env.VERCEL_URL;
+  return vercel ? `https://${vercel}` : undefined;
+}
+
 /** Variables de entorno del servidor, validadas una sola vez. */
 export function serverEnv(): ServerEnv {
   if (!cached) {
-    cached = serverEnvSchema.parse(process.env);
+    cached = serverEnvSchema.parse({ ...process.env, NEXT_PUBLIC_APP_URL: resolveAppUrl() });
   }
   return cached;
 }
