@@ -84,6 +84,10 @@ export default async function BusinessLandingPage({ params }: PageProps<"/n/[slu
           ·{" "}
           <Link href="/terminos" className="underline">
             Términos
+          </Link>{" "}
+          ·{" "}
+          <Link href="/soporte" className="underline">
+            Soporte
           </Link>
         </p>
       </main>

@@ -9,7 +9,7 @@ export function normalizePhone(input: string, defaultCountry: string): string | 
   if (!trimmed) return null;
   const parsed = parsePhoneNumberFromString(trimmed, defaultCountry as CountryCode);
   if (parsed?.isValid()) return parsed.number;
-  // Número con indicativo pero sin "+" (ej. 57 311 655 4177).
+  // Número con indicativo pero sin "+" (ej. 57 321 123 1234).
   const digits = trimmed.replace(/\D/g, "");
   if (digits.length > 10) {
     const withPlus = parsePhoneNumberFromString(`+${digits}`);
@@ -18,7 +18,7 @@ export function normalizePhone(input: string, defaultCountry: string): string | 
   return null;
 }
 
-/** Formato legible para mostrar (ej. +57 311 655 4177). */
+/** Formato legible para mostrar (ej. +57 321 123 1234). */
 export function formatPhone(e164: string): string {
   const parsed = parsePhoneNumberFromString(e164);
   return parsed ? parsed.formatInternational() : e164;
@@ -28,9 +28,9 @@ export function formatPhone(e164: string): string {
 export function phoneFieldHint(country: string): { placeholder: string; hint: string; invalid: string } {
   if (country === "CO") {
     return {
-      placeholder: "311 655 4177",
+      placeholder: "321 123 1234",
       hint: "Tu celular de 10 dígitos. No hace falta el +57.",
-      invalid: "Escribe tu celular de 10 dígitos, por ejemplo 311 655 4177",
+      invalid: "Escribe tu celular de 10 dígitos, por ejemplo 321 123 1234",
     };
   }
   return { placeholder: "", hint: "", invalid: "Teléfono inválido" };
