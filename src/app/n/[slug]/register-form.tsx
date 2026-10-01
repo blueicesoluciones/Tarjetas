@@ -118,9 +118,9 @@ export function RegisterForm({
       <label className="flex items-start gap-3 text-sm">
         <input type="checkbox" className="mt-0.5 size-5 shrink-0 accent-current" {...register("privacyAccepted")} />
         <span>
-          Acepto la{" "}
+          Autorizo el tratamiento de mis datos según la{" "}
           <Link href="/privacidad" target="_blank" className="underline">
-            política de privacidad
+            política de tratamiento de datos
           </Link>
         </span>
       </label>

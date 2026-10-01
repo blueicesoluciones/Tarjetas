@@ -24,13 +24,18 @@ export function WalletActions({ accessToken, serverPlatform, googleEnabled, appl
   );
   const url = useSyncExternalStore(noopSubscribe, () => window.location.href, () => "");
 
+  // Botón oficial de Google (es-419), sin modificar, según sus lineamientos de
+  // marca: alto mínimo 48 px y 8 px de espacio libre alrededor.
   const google = (
-    <a
-      key="google"
-      href={`/api/wallet/google/save/${accessToken}`}
-      className="flex h-12 items-center justify-center gap-2 rounded-full bg-black px-5 font-medium text-white"
-    >
-      <GoogleWalletIcon /> Agregar a Google Wallet
+    <a key="google" href={`/api/wallet/google/save/${accessToken}`} className="mx-auto block w-fit p-2">
+      {/* eslint-disable-next-line @next/next/no-img-element -- recurso oficial SVG */}
+      <img
+        src="/wallet/add-to-google-wallet-es419.svg"
+        alt="Agregar a la Billetera de Google"
+        width={378}
+        height={50}
+        className="h-[52px] w-auto max-w-full"
+      />
     </a>
   );
 
@@ -88,15 +93,4 @@ export function WalletActions({ accessToken, serverPlatform, googleEnabled, appl
 
 function noopSubscribe() {
   return () => {};
-}
-
-function GoogleWalletIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="size-5" aria-hidden>
-      <path fill="#4285F4" d="M3 7.5A2.5 2.5 0 0 1 5.5 5h13A2.5 2.5 0 0 1 21 7.5V9H3z" />
-      <path fill="#34A853" d="M3 9h18v3H3z" />
-      <path fill="#FBBC04" d="M3 12h18v3H3z" />
-      <path fill="#EA4335" d="M3 15h18v1.5A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5z" />
-    </svg>
-  );
 }

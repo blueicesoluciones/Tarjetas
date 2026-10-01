@@ -14,7 +14,7 @@ export const registerSchema = z
     email: z.union([z.literal(""), z.string().trim().email("Email inválido").max(120)]).optional(),
     pin: pinSchema,
     pinConfirm: z.string(),
-    privacyAccepted: z.literal(true, { message: "Debes aceptar la política de privacidad" }),
+    privacyAccepted: z.literal(true, { message: "Debes autorizar el tratamiento de tus datos para crear la tarjeta" }),
     marketingConsent: z.boolean().default(false),
   })
   .refine((d) => d.pin === d.pinConfirm, { message: "Los PIN no coinciden", path: ["pinConfirm"] });
