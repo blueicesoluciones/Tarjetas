@@ -46,3 +46,4 @@ next-env.d.ts
 blueice-wallet-*.json
 *service-account*.json
 env.vercel
+vercel-*.env
