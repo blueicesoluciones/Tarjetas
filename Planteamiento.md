@@ -296,8 +296,8 @@ create type stamp_event_type as enum ('stamp', 'manual_adjust', 'redeem', 'undo'
 | logo_url | text | URL pública (Supabase Storage, bucket público `logos`) |
 | primary_color | text not null default '#111827' | hex |
 | text_color | text not null default '#FFFFFF' | hex |
-| default_country | text not null default 'CL' | código ISO para normalizar teléfonos (ajustar al país) |
-| timezone | text not null default 'America/Santiago' | ajustar al país |
+| default_country | text not null default 'CO' | código ISO para normalizar teléfonos (Colombia: 10 dígitos → +57…) |
+| timezone | text not null default 'America/Bogota' | |
 | contact_whatsapp | text | opcional, para "Olvidé mi PIN" |
 | status | business_status not null default 'trial' | |
 | created_at, updated_at | timestamptz | |
@@ -799,9 +799,9 @@ Trabajar **una tarea a la vez**, con commit al terminar cada una. Cada fase tien
 10. Supabase Free + Vercel Hobby al inicio.
 11. Sin envío de correos: el super admin crea todos los usuarios de staff con contraseña.
 12. El PIN temporal lo puede elegir el owner (opcional) o se genera aleatorio.
+13. País de operación: **Colombia**. El cliente escribe su celular de 10 dígitos (con o sin espacios, con o sin +57) y se guarda en E.164 (+57…).
 
 ## 19. Pendientes por definir
 
-- País de operación (afecta teléfono por defecto, zona horaria, texto legal y pasarela de pago).
 - Nombre de la marca y dominio.
 - Precio para los negocios.

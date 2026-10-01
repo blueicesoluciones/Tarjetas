@@ -10,12 +10,24 @@ import { FieldError } from "@/components/customer/field-error";
 import { postJson } from "@/components/customer/post-json";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { phoneFieldHint } from "@/lib/domain/phone";
 import { registerSchema } from "@/lib/customers/schemas";
 
 type FormInput = z.input<typeof registerSchema>;
 type FormOutput = z.output<typeof registerSchema>;
 
-export function RegisterForm({ slug, buttonColor, buttonText }: { slug: string; buttonColor: string; buttonText: string }) {
+export function RegisterForm({
+  slug,
+  country,
+  buttonColor,
+  buttonText,
+}: {
+  slug: string;
+  country: string;
+  buttonColor: string;
+  buttonText: string;
+}) {
+  const phone = phoneFieldHint(country);
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
   const [duplicate, setDuplicate] = useState(false);
@@ -54,8 +66,17 @@ export function RegisterForm({ slug, buttonColor, buttonText }: { slug: string; 
         <FieldError message={errors.fullName?.message} />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="phone">Teléfono</Label>
-        <Input id="phone" type="tel" inputMode="tel" autoComplete="tel" className="h-11" {...register("phone")} />
+        <Label htmlFor="phone">Celular</Label>
+        <Input
+          id="phone"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          placeholder={phone.placeholder}
+          className="h-11"
+          {...register("phone")}
+        />
+        {phone.hint && !errors.phone ? <p className="text-xs text-muted-foreground">{phone.hint}</p> : null}
         <FieldError message={errors.phone?.message} />
       </div>
       <div className="space-y-1.5">

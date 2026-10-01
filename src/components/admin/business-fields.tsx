@@ -21,8 +21,8 @@ export const EMPTY_BUSINESS: BusinessDefaults = {
   slug: "",
   primary_color: "#111827",
   text_color: "#FFFFFF",
-  default_country: "CL",
-  timezone: "America/Santiago",
+  default_country: "CO",
+  timezone: "America/Bogota",
   contact_whatsapp: "",
   status: "trial",
 };

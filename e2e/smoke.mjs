@@ -34,7 +34,7 @@ try {
   await customer.goto(`${B}/n/cafe-luna`);
   const name = `Cliente E2E ${run}`;
   await customer.fill("#fullName", name);
-  await customer.fill("#phone", `9 7${run.slice(0, 3)} ${run.slice(3)}0`);
+  await customer.fill("#phone", `310 ${run.slice(0, 3)} ${run.slice(3)}1`);
   await customer.fill("#pin", "1234");
   await customer.fill("#pinConfirm", "1234");
   await customer.locator("main button[type=submit]").click();
@@ -98,7 +98,7 @@ try {
   const returning = await (await browser.newContext({ ...devices["iPhone 13"] })).newPage();
   watch(returning, "cliente-reingreso");
   await returning.goto(`${B}/n/cafe-luna/ingresar`);
-  await returning.fill("#phone", `9 7${run.slice(0, 3)} ${run.slice(3)}0`);
+  await returning.fill("#phone", `310 ${run.slice(0, 3)} ${run.slice(3)}1`);
   await returning.fill("#pin", "8642");
   await returning.locator("main button[type=submit]").first().click();
   await returning.waitForURL(/nuevo-pin/);

@@ -9,18 +9,21 @@ import { FieldError } from "@/components/customer/field-error";
 import { postJson } from "@/components/customer/post-json";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { phoneFieldHint } from "@/lib/domain/phone";
 import { loginSchema } from "@/lib/customers/schemas";
 
 type FormInput = z.input<typeof loginSchema>;
 
 interface Props {
   slug: string;
+  country: string;
   buttonColor: string;
   buttonText: string;
   whatsappUrl: string | null;
 }
 
-export function LoginForm({ slug, buttonColor, buttonText, whatsappUrl }: Props) {
+export function LoginForm({ slug, country, buttonColor, buttonText, whatsappUrl }: Props) {
+  const phone = phoneFieldHint(country);
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
   const [showForgot, setShowForgot] = useState(false);
@@ -47,8 +50,17 @@ export function LoginForm({ slug, buttonColor, buttonText, whatsappUrl }: Props)
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <div className="space-y-1.5">
-        <Label htmlFor="phone">Teléfono</Label>
-        <Input id="phone" type="tel" inputMode="tel" autoComplete="tel" className="h-11" {...register("phone")} />
+        <Label htmlFor="phone">Celular</Label>
+        <Input
+          id="phone"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          placeholder={phone.placeholder}
+          className="h-11"
+          {...register("phone")}
+        />
+        {phone.hint && !errors.phone ? <p className="text-xs text-muted-foreground">{phone.hint}</p> : null}
         <FieldError message={errors.phone?.message} />
       </div>
       <div className="space-y-1.5">

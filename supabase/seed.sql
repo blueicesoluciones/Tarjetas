@@ -39,9 +39,9 @@ end $$;
 -- ---------------------------------------------------------------------------
 -- Negocios y programas
 -- ---------------------------------------------------------------------------
-insert into public.businesses (id, name, slug, primary_color, text_color, status, contact_whatsapp) values
-  ('11111111-1111-1111-1111-111111111111', 'Café Luna', 'cafe-luna', '#3B2F2F', '#FFF8E7', 'active', '+56911111111'),
-  ('22222222-2222-2222-2222-222222222222', 'Barbería Sol', 'barberia-sol', '#0F4C81', '#FFFFFF', 'trial', null);
+insert into public.businesses (id, name, slug, primary_color, text_color, status, contact_whatsapp, default_country, timezone) values
+  ('11111111-1111-1111-1111-111111111111', 'Café Luna', 'cafe-luna', '#3B2F2F', '#FFF8E7', 'active', '+573001111111', 'CO', 'America/Bogota'),
+  ('22222222-2222-2222-2222-222222222222', 'Barbería Sol', 'barberia-sol', '#0F4C81', '#FFFFFF', 'trial', null, 'CO', 'America/Bogota');
 
 insert into public.programs (id, business_id, card_title, stamps_required, reward_description, stamp_cooldown_minutes) values
   ('11111111-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'Tarjeta Café Luna', 10, 'Un café gratis', 60),
@@ -61,9 +61,9 @@ insert into public.profiles (id, full_name, role, business_id) values
 -- Clientes y tarjetas
 -- ---------------------------------------------------------------------------
 insert into public.customers (id, business_id, full_name, phone_e164, email, pin_hash, privacy_accepted_at) values
-  ('11111111-0000-0000-0000-00000000c001', '11111111-1111-1111-1111-111111111111', 'Camila Rojas', '+56912345601', 'camila@example.com', extensions.crypt('2580', extensions.gen_salt('bf', 10)), now()),
-  ('11111111-0000-0000-0000-00000000c002', '11111111-1111-1111-1111-111111111111', 'Diego Muñoz', '+56912345602', null, extensions.crypt('2580', extensions.gen_salt('bf', 10)), now()),
-  ('22222222-0000-0000-0000-00000000c001', '22222222-2222-2222-2222-222222222222', 'Camila Rojas', '+56912345601', null, extensions.crypt('2580', extensions.gen_salt('bf', 10)), now());
+  ('11111111-0000-0000-0000-00000000c001', '11111111-1111-1111-1111-111111111111', 'Camila Rojas', '+573001234501', 'camila@example.com', extensions.crypt('2580', extensions.gen_salt('bf', 10)), now()),
+  ('11111111-0000-0000-0000-00000000c002', '11111111-1111-1111-1111-111111111111', 'Diego Muñoz', '+573001234502', null, extensions.crypt('2580', extensions.gen_salt('bf', 10)), now()),
+  ('22222222-0000-0000-0000-00000000c001', '22222222-2222-2222-2222-222222222222', 'Camila Rojas', '+573001234501', null, extensions.crypt('2580', extensions.gen_salt('bf', 10)), now());
 
 insert into public.cards (id, business_id, program_id, customer_id, public_code, access_token, stamps_count, total_stamps) values
   ('11111111-0000-0000-0000-0000000ca001', '11111111-1111-1111-1111-111111111111', '11111111-0000-0000-0000-000000000001',

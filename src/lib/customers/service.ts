@@ -9,7 +9,7 @@ import {
   registerSuccess,
   type PinLockState,
 } from "@/lib/domain/lockout";
-import { normalizePhone } from "@/lib/domain/phone";
+import { normalizePhone, phoneFieldHint } from "@/lib/domain/phone";
 import { newAccessToken, newPublicCode } from "@/lib/domain/tokens";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createCardEverywhere } from "@/lib/wallet";
@@ -89,7 +89,7 @@ export async function registerCustomer(
   }
 
   const phone = normalizePhone(input.phone, business.default_country);
-  if (!phone) return { ok: false, error: "Teléfono inválido", field: "phone" };
+  if (!phone) return { ok: false, error: phoneFieldHint(business.default_country).invalid, field: "phone" };
 
   const admin = createAdminClient();
   const pinHash = await hash(input.pin, BCRYPT_COST);

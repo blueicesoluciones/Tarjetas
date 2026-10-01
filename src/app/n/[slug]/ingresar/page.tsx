@@ -26,6 +26,7 @@ export default async function CustomerLoginPage({ params }: PageProps<"/n/[slug]
         <section className="rounded-2xl bg-background p-5 shadow-sm">
           <LoginForm
             slug={business.slug}
+            country={business.default_country}
             buttonColor={business.primary_color}
             buttonText={business.text_color}
             whatsappUrl={whatsapp ? `https://wa.me/${whatsapp}` : null}

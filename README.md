@@ -43,7 +43,7 @@ Contraseña de staff: `Password123!` · PIN de clientes: `2580`
 | owner | owner@barberiasol.test | Barbería Sol (`/n/barberia-sol`) |
 | cashier | cajero@barberiasol.test | Barbería Sol |
 
-Clientes: Camila Rojas `+56912345601` (en ambos negocios), Diego Muñoz `+56912345602` (Café Luna, premio disponible).
+Clientes: Camila Rojas `300 123 4501` (en ambos negocios), Diego Muñoz `300 123 4502` (Café Luna, premio disponible).
 Tarjeta web de ejemplo: `/t/demo-token-cafe-luna-camila-000000000001`.
 
 ## Scripts

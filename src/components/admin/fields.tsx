@@ -45,8 +45,8 @@ export function SelectField({ label, name, options, className, ...props }: Selec
 export const STATUS_LABELS = { trial: "Prueba", active: "Activo", suspended: "Suspendido" } as const;
 
 export const COUNTRY_OPTIONS = [
-  { value: "CL", label: "Chile" },
   { value: "CO", label: "Colombia" },
+  { value: "CL", label: "Chile" },
   { value: "MX", label: "México" },
   { value: "PE", label: "Perú" },
   { value: "AR", label: "Argentina" },
@@ -57,8 +57,8 @@ export const COUNTRY_OPTIONS = [
 ];
 
 export const TIMEZONE_OPTIONS = [
-  "America/Santiago",
   "America/Bogota",
+  "America/Santiago",
   "America/Mexico_City",
   "America/Lima",
   "America/Argentina/Buenos_Aires",

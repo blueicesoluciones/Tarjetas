@@ -28,8 +28,8 @@ export const programFormSchema = z.object({
 export type ProgramFormValues = z.output<typeof programFormSchema>;
 
 export const COMMON_TIMEZONES = [
-  "America/Santiago",
   "America/Bogota",
+  "America/Santiago",
   "America/Lima",
   "America/Mexico_City",
   "America/Argentina/Buenos_Aires",
@@ -47,8 +47,8 @@ export const COMMON_TIMEZONES = [
 ];
 
 export const COMMON_COUNTRIES: Array<[string, string]> = [
-  ["CL", "Chile"],
   ["CO", "Colombia"],
+  ["CL", "Chile"],
   ["PE", "Perú"],
   ["MX", "México"],
   ["AR", "Argentina"],

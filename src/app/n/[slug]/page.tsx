@@ -59,7 +59,7 @@ export default async function BusinessLandingPage({ params }: PageProps<"/n/[slu
             <section className="rounded-2xl bg-background p-5 shadow-sm">
               <h2 className="text-lg font-semibold">Crear mi tarjeta</h2>
               <p className="mb-4 text-sm text-muted-foreground">Sin apps ni contraseñas. Solo tu nombre, teléfono y un PIN.</p>
-              <RegisterForm slug={business.slug} buttonColor={business.primary_color} buttonText={business.text_color} />
+              <RegisterForm slug={business.slug} country={business.default_country} buttonColor={business.primary_color} buttonText={business.text_color} />
             </section>
             <Link
               href={`/n/${business.slug}/ingresar`}
