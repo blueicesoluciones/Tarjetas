@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
-import { QRCodeSVG } from "qrcode.react";
 import type { DevicePlatform } from "@/lib/domain/device";
 
 interface Props {
@@ -22,7 +21,6 @@ export function WalletActions({ accessToken, serverPlatform, googleEnabled, appl
         : serverPlatform,
     () => serverPlatform,
   );
-  const url = useSyncExternalStore(noopSubscribe, () => window.location.href, () => "");
 
   // Botón oficial de Google (es-419), sin modificar, según sus lineamientos de
   // marca: alto mínimo 48 px y 8 px de espacio libre alrededor.
@@ -62,19 +60,32 @@ export function WalletActions({ accessToken, serverPlatform, googleEnabled, appl
     </div>
   );
 
-  const primary =
-    platform === "android" ? (googleEnabled ? google : null) : platform === "ios" ? apple : null;
+  // Celular: el botón de su plataforma y la otra opción bajo «¿Otro teléfono?».
+  // Computador: ambas opciones visibles (Google Wallet no existe en iPhone).
+  const primary = platform === "android" ? (googleEnabled ? google : null) : platform === "ios" ? apple : null;
   const other = platform === "android" ? apple : googleEnabled ? google : null;
+
+  if (platform === "desktop") {
+    return (
+      <section className="space-y-3 rounded-2xl bg-background p-5 shadow-sm">
+        <p className="text-center font-semibold">Lleva tu tarjeta en el celular</p>
+        {googleEnabled ? (
+          <div className="space-y-1">
+            <p className="text-center text-sm text-muted-foreground">En Android</p>
+            {google}
+          </div>
+        ) : null}
+        <div className="space-y-1">
+          <p className="text-center text-sm text-muted-foreground">En iPhone</p>
+          {apple}
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="space-y-3">
       {primary}
-      {platform === "desktop" ? (
-        <div className="rounded-2xl bg-background p-5 text-center shadow-sm">
-          <p className="mb-3 text-sm text-muted-foreground">Abre tu tarjeta en el celular escaneando este código</p>
-          {url ? <QRCodeSVG value={url} size={150} className="mx-auto" /> : null}
-        </div>
-      ) : null}
       {other ? (
         <>
           <button
@@ -82,7 +93,7 @@ export function WalletActions({ accessToken, serverPlatform, googleEnabled, appl
             onClick={() => setShowOther((v) => !v)}
             className="w-full text-center text-sm text-muted-foreground underline"
           >
-            {platform === "desktop" ? "Opciones para tu teléfono" : "¿Otro teléfono?"}
+            ¿Otro teléfono?
           </button>
           {showOther ? other : null}
         </>

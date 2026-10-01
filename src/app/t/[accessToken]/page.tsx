@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BusinessLogo } from "@/components/customer/brand-header";
 import { InAppBrowserNotice } from "@/components/customer/in-app-browser-notice";
@@ -117,9 +118,26 @@ export default async function WebCardPage({ params, searchParams }: PageProps<"/
         {card.totalRedemptions > 0 ? (
           <p className="text-center text-xs text-muted-foreground">Has canjeado {card.totalRedemptions} premio(s). ¡Gracias!</p>
         ) : null}
-        <p className="text-center text-xs text-muted-foreground">
-          Guarda este enlace: es tu tarjeta. No lo compartas.
-        </p>
+        <section className="rounded-2xl bg-background p-5 text-sm shadow-sm">
+          <p className="font-semibold">¿Cómo vuelvo a ver mi tarjeta?</p>
+          <ul className="mt-2 space-y-2 text-muted-foreground">
+            <li>
+              <strong className="text-foreground">Escanea de nuevo el QR de {business.name}</strong> (el del local o el que
+              te compartieron): en este celular te trae directo aquí.
+            </li>
+            <li>
+              O <strong className="text-foreground">guarda esta página</strong> en tus favoritos o en la pantalla de inicio.
+            </li>
+            <li>
+              ¿Cambiaste de celular? Escanea el QR del negocio, toca{" "}
+              <Link href={`/n/${business.slug}/ingresar`} className="font-medium text-foreground underline">
+                Ya tengo tarjeta
+              </Link>{" "}
+              y entra con tu celular y tu PIN.
+            </li>
+          </ul>
+          <p className="mt-3 text-xs text-muted-foreground">Esta página es personal: no compartas su enlace.</p>
+        </section>
       </main>
     </div>
   );
