@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { LEGAL } from "@/lib/legal";
 import { Check, Globe, ScanLine, ShieldCheck, Smartphone, Store, Wallet } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 // Marca pendiente de definir: "Sellos" es un nombre provisorio.
-const CONTACT_MAILTO = "mailto:[email de contacto]?subject=Quiero%20tarjetas%20de%20sellos%20para%20mi%20negocio";
+const CONTACT_MAILTO = `mailto:${LEGAL.email}?subject=Quiero%20tarjetas%20de%20sellos%20para%20mi%20negocio`;
 
 const STEPS = [
   {
@@ -94,13 +95,21 @@ export default function Home() {
 
       <footer className="border-t">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-muted-foreground">
-          <span>© {new Date().getFullYear()} Sellos</span>
+          <span>
+            © {new Date().getFullYear()} {LEGAL.company} · {LEGAL.country} ·{" "}
+            <a href={`mailto:${LEGAL.email}`} className="hover:text-foreground">
+              {LEGAL.email}
+            </a>
+          </span>
           <nav className="flex gap-4">
             <Link href="/privacidad" className="hover:text-foreground">
               Privacidad
             </Link>
             <Link href="/terminos" className="hover:text-foreground">
               Términos
+            </Link>
+            <Link href="/soporte" className="hover:text-foreground">
+              Soporte
             </Link>
           </nav>
         </div>
