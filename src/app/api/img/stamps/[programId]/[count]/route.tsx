@@ -85,6 +85,21 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/img/stamps/
             }}
           />
         ) : null}
+        {backgroundUrl ? (
+          // En Google Wallet la parte superior del pase es de color sólido (no admite
+          // foto de fondo): la imagen arranca con ese color y se funde con la foto
+          // para que la tarjeta se vea continua.
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: WIDTH,
+              height: HEIGHT,
+              backgroundImage: `linear-gradient(to bottom, ${bg} 0%, ${bg}E6 18%, ${bg}00 70%)`,
+            }}
+          />
+        ) : null}
         {grid.map((row, r) => (
           <div key={r} style={{ display: "flex", gap }}>
             {row.map((on, i) => {

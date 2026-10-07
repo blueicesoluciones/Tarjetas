@@ -12,7 +12,7 @@ import { userAgent } from "@/lib/request";
 import { appleWallet, googleWallet } from "@/lib/wallet";
 import { AutoRefresh } from "./auto-refresh";
 import { CardQr } from "./card-qr";
-import { StampGrid } from "./stamp-grid";
+import { StampGrid } from "@/components/customer/stamp-grid";
 import { WalletActions } from "./wallet-actions";
 
 export const metadata: Metadata = {

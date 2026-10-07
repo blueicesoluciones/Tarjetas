@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { QRCodeSVG } from "qrcode.react";
+import { StampGrid } from "@/components/customer/stamp-grid";
 import { cardBackgroundStyle } from "@/lib/cards/card-style";
 import { COMMON_COUNTRIES, COMMON_TIMEZONES, type ProgramFormValues } from "@/lib/panel/program-schema";
 import { saveProgram, type ProgramFormState } from "./actions";
@@ -242,6 +244,9 @@ function ColorField({
   );
 }
 
+const SAMPLE_CODE = "EJEMPLO00000001";
+
+/** Vista previa vertical en un marco de celular: tarjeta web o Google Wallet. */
 function CardPreview({
   values,
   required,
@@ -255,40 +260,138 @@ function CardPreview({
   logoUrl: string | null;
   backgroundUrl: string | null;
 }) {
-  const bg = /^#[0-9A-Fa-f]{6}$/.test(values.primaryColor) ? values.primaryColor : "#111827";
+  const [tab, setTab] = useState<"web" | "wallet">("web");
+  const bg = /^#[0-9A-Fa-f]{6}$/.test(values.primaryColor) ? values.primaryColor : "#0D0D0D";
   const fg = /^#[0-9A-Fa-f]{6}$/.test(values.textColor) ? values.textColor : "#FFFFFF";
-  const reward = count >= required;
-  const cols = required <= 10 ? Math.min(required, 5) : Math.ceil(required / Math.ceil(required / 6));
+  const name = values.businessName || "Tu negocio";
+
   return (
-    <article className="overflow-hidden rounded-3xl shadow-lg" style={{ ...cardBackgroundStyle(bg, backgroundUrl), color: fg }}>
-      <div className="flex items-center gap-3 px-5 pt-5">
-        <BusinessLogo name={values.businessName || "?"} logoUrl={logoUrl} primaryColor={bg} textColor={fg} size={40} />
-        <div className="min-w-0">
-          <p className="truncate text-xs opacity-80">{values.businessName}</p>
-          <p className="truncate font-bold">{values.cardTitle}</p>
-        </div>
-      </div>
-      <div className="px-5 pt-3">
-        <p className="text-[10px] tracking-wide uppercase opacity-70">Cliente</p>
-        <p className="font-semibold">Camila Rojas</p>
-      </div>
-      <div className="grid gap-2 px-5 py-4" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
-        {Array.from({ length: required }, (_, i) => (
-          <div
-            key={i}
-            className="flex aspect-square items-center justify-center rounded-full border-2 text-sm font-bold"
-            style={{ borderColor: fg, backgroundColor: i < count ? fg : "transparent", color: bg, opacity: i < count ? 1 : 0.55 }}
+    <div className="space-y-3">
+      <div role="tablist" className="grid grid-cols-2 rounded-full bg-muted p-1 text-sm">
+        {(
+          [
+            ["web", "Tarjeta web"],
+            ["wallet", "Google Wallet"],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={tab === id}
+            onClick={() => setTab(id)}
+            className={`rounded-full px-3 py-1.5 font-medium transition-colors ${
+              tab === id ? "bg-background shadow-sm" : "text-muted-foreground"
+            }`}
           >
-            {i < count ? "✓" : i === required - 1 ? <span style={{ color: fg }}>★</span> : null}
-          </div>
+            {label}
+          </button>
         ))}
       </div>
-      <div className="px-5 pb-5 text-sm">
-        <p className="text-2xl font-bold tabular-nums">
+
+      <div className="mx-auto w-full max-w-[320px] rounded-[2.6rem] bg-ink p-2.5 shadow-xl">
+        <div className="h-[600px] overflow-y-auto rounded-[2.1rem] bg-[#f2f1ee] px-3 pt-8 pb-6 [scrollbar-width:none]">
+          {tab === "web" ? (
+            <WebCardPreview values={values} name={name} bg={bg} fg={fg} required={required} count={count} logoUrl={logoUrl} backgroundUrl={backgroundUrl} />
+          ) : (
+            <WalletPreview values={values} name={name} bg={bg} fg={fg} required={required} count={count} logoUrl={logoUrl} backgroundUrl={backgroundUrl} />
+          )}
+        </div>
+      </div>
+      <p className="text-center text-xs text-muted-foreground">
+        {tab === "web"
+          ? "Así la ve tu cliente al abrir su tarjeta."
+          : "Aproximación: Google define la tipografía y el orden exacto. La parte superior siempre es de color sólido."}
+      </p>
+    </div>
+  );
+}
+
+interface PreviewProps {
+  values: ProgramFormValues;
+  name: string;
+  bg: string;
+  fg: string;
+  required: number;
+  count: number;
+  logoUrl: string | null;
+  backgroundUrl: string | null;
+}
+
+function WebCardPreview({ values, name, bg, fg, required, count, logoUrl, backgroundUrl }: PreviewProps) {
+  const reward = count >= required;
+  return (
+    <article className="overflow-hidden rounded-3xl shadow-lg" style={{ ...cardBackgroundStyle(bg, backgroundUrl), color: fg }}>
+      <div className="flex items-center gap-2.5 px-4 pt-4">
+        <BusinessLogo name={name} logoUrl={logoUrl} primaryColor={bg} textColor={fg} size={36} />
+        <div className="min-w-0">
+          <p className="truncate text-[11px] opacity-80">{name}</p>
+          <p className="truncate text-sm font-bold">{values.cardTitle}</p>
+        </div>
+      </div>
+      <div className="px-4 pt-3">
+        <p className="text-[9px] tracking-wide uppercase opacity-70">Cliente</p>
+        <p className="text-sm font-semibold">Camila Rojas</p>
+      </div>
+      <StampGrid count={count} required={required} primaryColor={bg} textColor={fg} />
+      <div className="px-4 pb-4">
+        <p className="text-xl font-bold tabular-nums">
           {count}
-          <span className="text-base opacity-70"> / {required}</span>
+          <span className="text-sm opacity-70"> / {required}</span>
         </p>
-        <p className="opacity-80">{reward ? "¡Premio disponible!" : `Premio: ${values.rewardDescription}`}</p>
+        <p className="text-xs opacity-80">
+          {reward ? "¡Premio disponible! Muéstrale esta tarjeta al cajero." : `Te faltan ${required - count} para: ${values.rewardDescription}`}
+        </p>
+      </div>
+      <div className="bg-white px-4 py-5 text-center text-neutral-900">
+        <QRCodeSVG value={`LC1:${SAMPLE_CODE}`} size={132} level="M" marginSize={0} className="mx-auto" />
+        <p className="mt-2 font-mono text-[10px] tracking-widest text-neutral-500">{SAMPLE_CODE}</p>
+        <p className="mt-0.5 text-[10px] text-neutral-500">Muestra este código en caja para sumar sellos</p>
+      </div>
+    </article>
+  );
+}
+
+function WalletPreview({ values, name, bg, fg, required, count, logoUrl, backgroundUrl }: PreviewProps) {
+  return (
+    <article className="overflow-hidden rounded-3xl shadow-lg" style={{ backgroundColor: bg, color: fg }}>
+      <div className="flex items-center gap-2.5 px-4 pt-4">
+        <BusinessLogo name={name} logoUrl={logoUrl} primaryColor={bg} textColor={fg} size={30} />
+        <p className="truncate text-sm font-medium">{name}</p>
+      </div>
+      <p className="px-4 pt-4 text-lg leading-tight font-semibold">{values.cardTitle}</p>
+      <div className="flex justify-between px-4 pt-4 text-xs">
+        <div>
+          <p className="opacity-70">Sellos</p>
+          <p className="text-sm font-semibold tabular-nums">
+            {count} / {required}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="opacity-70">Cliente</p>
+          <p className="text-sm font-semibold">Camila Rojas</p>
+        </div>
+      </div>
+      <div className="mx-auto mt-5 w-fit rounded-xl bg-white p-2.5">
+        <QRCodeSVG value={`LC1:${SAMPLE_CODE}`} size={112} level="M" marginSize={0} />
+      </div>
+      <p className="pt-1.5 pb-5 text-center text-[10px] opacity-80">{SAMPLE_CODE}</p>
+      {/* Imagen destacada (hero): igual que /api/img/stamps, con el fundido superior. */}
+      <div
+        className="relative -mt-px aspect-[1032/336] w-full"
+        style={
+          backgroundUrl
+            ? {
+                backgroundImage: `linear-gradient(to bottom, ${bg} 0%, ${bg}E6 18%, ${bg}00 70%), linear-gradient(${bg}A6, ${bg}A6), url("${backgroundUrl}")`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }
+            : { backgroundColor: bg }
+        }
+      >
+        <div className="absolute inset-0 flex items-center px-2">
+          <StampGrid count={count} required={required} primaryColor={bg} textColor={fg} />
+        </div>
       </div>
     </article>
   );
