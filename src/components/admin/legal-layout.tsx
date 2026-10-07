@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { StampLogo } from "@/components/brand/logo";
 
 /** Diseño de lectura para las páginas legales. */
 export function LegalLayout({ title, updated, children }: { title: string; updated?: string; children: React.ReactNode }) {
@@ -6,8 +7,8 @@ export function LegalLayout({ title, updated, children }: { title: string; updat
     <div className="min-h-dvh bg-background">
       <header className="border-b">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
-          <Link href="/" className="text-lg font-bold tracking-tight">
-            Sellos
+          <Link href="/" aria-label="stamp, inicio">
+            <StampLogo height={26} />
           </Link>
           <nav className="flex gap-4 text-sm text-muted-foreground">
             <Link href="/privacidad" className="hover:text-foreground">

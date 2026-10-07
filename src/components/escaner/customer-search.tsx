@@ -54,7 +54,7 @@ export function CustomerSearch() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Teléfono o nombre"
-          className="h-14 w-full rounded-2xl bg-white/10 pr-4 pl-12 text-lg outline-none placeholder:text-white/40 focus:ring-2 focus:ring-yellow-400"
+          className="h-14 w-full rounded-2xl bg-white/10 pr-4 pl-12 text-lg outline-none placeholder:text-white/40 focus:ring-2 focus:ring-lime"
         />
       </label>
 

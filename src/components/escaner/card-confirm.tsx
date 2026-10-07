@@ -149,7 +149,7 @@ export function CardConfirm({ publicCode }: { publicCode: string }) {
           type="button"
           onClick={redeem}
           disabled={busy !== null || !online}
-          className="h-16 rounded-2xl bg-emerald-500 text-xl font-bold text-black disabled:opacity-50"
+          className="h-16 rounded-2xl bg-paper text-xl font-bold text-ink disabled:opacity-50"
         >
           {busy === "redeem" ? "Canjeando…" : "Sí, canjear premio"}
         </button>
@@ -176,7 +176,11 @@ export function CardConfirm({ publicCode }: { publicCode: string }) {
         </div>
         <StampDots count={card.stamps_count} required={card.stamps_required} />
         <p className="mt-3 text-xs text-neutral-500">
-          {card.last_stamp_at ? `Último sello: ${formatRelative(card.last_stamp_at, now)}` : "Sin sellos todavía"}
+          {card.last_stamp_at
+            ? `Último sello: ${formatRelative(card.last_stamp_at, now)}`
+            : card.stamps_count === 0
+              ? "Sin sellos todavía"
+              : null}
         </p>
       </section>
 
@@ -201,7 +205,7 @@ export function CardConfirm({ publicCode }: { publicCode: string }) {
             type="button"
             onClick={stamp}
             disabled={busy !== null || !online}
-            className="h-20 rounded-3xl bg-yellow-400 text-3xl font-extrabold text-black shadow-lg active:scale-[0.98] disabled:opacity-50"
+            className="h-20 rounded-3xl bg-lime text-3xl font-extrabold text-black shadow-lg active:scale-[0.98] disabled:opacity-50"
           >
             {busy === "stamp" ? "Sumando…" : "+1 sello"}
           </button>
@@ -210,7 +214,7 @@ export function CardConfirm({ publicCode }: { publicCode: string }) {
               type="button"
               onClick={() => setConfirmRedeem(true)}
               disabled={busy !== null || !online}
-              className="flex h-16 items-center justify-center gap-2 rounded-2xl bg-emerald-500 text-xl font-bold text-black disabled:opacity-50"
+              className="flex h-16 items-center justify-center gap-2 rounded-2xl bg-paper text-xl font-bold text-ink disabled:opacity-50"
             >
               <Gift className="size-6" /> Canjear premio
             </button>

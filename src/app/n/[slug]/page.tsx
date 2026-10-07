@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
+import { PoweredByStamp } from "@/components/brand/logo";
 import { BrandHeader } from "@/components/customer/brand-header";
 import { InAppBrowserNotice } from "@/components/customer/in-app-browser-notice";
 import { getCustomerSession } from "@/lib/customer-session";
@@ -77,6 +78,9 @@ export default async function BusinessLandingPage({ params }: PageProps<"/n/[slu
           </section>
         ) : null}
 
+        <div className="flex justify-center pt-2">
+          <PoweredByStamp />
+        </div>
         <p className="text-center text-xs text-muted-foreground">
           <Link href="/privacidad" className="underline">
             Política de privacidad

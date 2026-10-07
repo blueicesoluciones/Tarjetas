@@ -1,7 +1,7 @@
 // Service worker mínimo de la PWA del cajero: cachea solo el shell estático.
 // Nunca cachea respuestas de API ni páginas con datos (requieren conexión).
-const CACHE = "escaner-shell-v1";
-const SHELL = ["/escaner/manifest.webmanifest", "/escaner/icons/192", "/escaner/icons/512"];
+const CACHE = "escaner-shell-v2";
+const SHELL = ["/escaner/manifest.webmanifest", "/escaner/icons/192.png", "/escaner/icons/512.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

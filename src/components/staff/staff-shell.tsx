@@ -2,6 +2,7 @@ import Link from "next/link";
 import { LogOut } from "lucide-react";
 import { signOut } from "@/app/actions/auth";
 import { stopImpersonation } from "@/app/actions/impersonation";
+import { StampLogo } from "@/components/brand/logo";
 import { NavLinks, type NavItem } from "./nav-links";
 
 interface StaffShellProps {
@@ -16,12 +17,12 @@ export function StaffShell({ title, userName, nav, impersonatingName, children }
   return (
     <div className="flex min-h-dvh flex-col">
       {impersonatingName ? (
-        <div className="sticky top-0 z-50 flex items-center justify-center gap-3 bg-amber-400 px-4 py-2 text-sm font-medium text-amber-950">
+        <div className="sticky top-0 z-50 flex items-center justify-center gap-3 bg-lime px-4 py-2 text-sm font-medium text-ink">
           <span>
             Estás viendo como <strong>{impersonatingName}</strong>
           </span>
           <form action={stopImpersonation}>
-            <button type="submit" className="rounded-md bg-amber-950/10 px-2 py-0.5 underline-offset-2 hover:underline">
+            <button type="submit" className="rounded-md bg-ink/10 px-2 py-0.5 underline-offset-2 hover:underline">
               Salir
             </button>
           </form>
@@ -29,8 +30,9 @@ export function StaffShell({ title, userName, nav, impersonatingName, children }
       ) : null}
       <header className="border-b bg-background">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-          <Link href="/" className="text-lg font-bold tracking-tight">
-            Sellos <span className="font-normal text-muted-foreground">· {title}</span>
+          <Link href="/" className="flex items-center gap-2.5" aria-label="stamp, inicio">
+            <StampLogo height={26} />
+            <span className="hidden border-l border-border pl-2.5 text-sm text-muted-foreground sm:inline">{title}</span>
           </Link>
           <NavLinks items={nav} />
           <div className="ml-auto flex items-center gap-3 text-sm text-muted-foreground">

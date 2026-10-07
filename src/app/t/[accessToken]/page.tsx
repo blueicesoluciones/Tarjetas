@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { PoweredByStamp } from "@/components/brand/logo";
 import { BusinessLogo } from "@/components/customer/brand-header";
 import { InAppBrowserNotice } from "@/components/customer/in-app-browser-notice";
 import { cardBackgroundStyle } from "@/lib/cards/card-style";
@@ -138,6 +139,10 @@ export default async function WebCardPage({ params, searchParams }: PageProps<"/
           </ul>
           <p className="mt-3 text-xs text-muted-foreground">Esta página es personal: no compartas su enlace.</p>
         </section>
+
+        <div className="flex justify-center">
+          <PoweredByStamp />
+        </div>
       </main>
     </div>
   );

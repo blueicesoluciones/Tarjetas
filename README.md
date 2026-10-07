@@ -1,4 +1,4 @@
-# Sellos — tarjetas de fidelidad digitales
+# stamp — tarjetas de fidelidad digitales
 
 Plataforma SaaS multi-negocio de tarjetas de sellos (web + Google Wallet; Apple Wallet más adelante).
 La especificación completa está en [`Planteamiento.md`](./Planteamiento.md) (fuente de verdad del proyecto).

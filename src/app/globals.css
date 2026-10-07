@@ -5,6 +5,12 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* Identidad stamp */
+  --color-ink: var(--brand-ink);
+  --color-paper: var(--brand-paper);
+  --color-sand: var(--brand-sand);
+  --color-lime: var(--brand-lime);
+  --color-sage: var(--brand-sage);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
@@ -49,38 +55,46 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  /* Paleta de marca (branding stamp) */
+  --brand-ink: #0d0d0d;
+  --brand-paper: #f7f6f3;
+  --brand-sand: #d9d4ca;
+  --brand-lime: #c7ff3d;
+  --brand-sage: #6b7a6f;
+
+  --background: var(--brand-paper);
+  --foreground: var(--brand-ink);
+  --card: #ffffff;
+  --card-foreground: var(--brand-ink);
+  --popover: #ffffff;
+  --popover-foreground: var(--brand-ink);
+  --primary: var(--brand-ink);
+  --primary-foreground: var(--brand-paper);
+  --secondary: #ece9e2;
+  --secondary-foreground: var(--brand-ink);
+  --muted: #efece6;
+  /* Salvia un poco más oscura que #6B7A6F para contraste AA sobre el fondo hueso. */
+  --muted-foreground: #5a675e;
+  --accent: #efece6;
+  --accent-foreground: var(--brand-ink);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --border: #e4e0d7;
+  --input: var(--brand-sand);
+  --ring: var(--brand-sage);
+  --chart-1: var(--brand-ink);
+  --chart-2: var(--brand-sage);
+  --chart-3: var(--brand-lime);
+  --chart-4: var(--brand-sand);
+  --chart-5: #3a3f3b;
+  --radius: 0.875rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: var(--brand-ink);
+  --sidebar-primary: var(--brand-ink);
+  --sidebar-primary-foreground: var(--brand-paper);
+  --sidebar-accent: #efece6;
+  --sidebar-accent-foreground: var(--brand-ink);
+  --sidebar-border: #e4e0d7;
+  --sidebar-ring: var(--brand-sage);
 }
 
 .dark {

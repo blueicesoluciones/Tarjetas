@@ -109,7 +109,7 @@ export function Scanner() {
             onClick={toggleTorch}
             aria-pressed={torchOn}
             aria-label="Linterna"
-            className={`absolute right-3 bottom-3 rounded-full p-3 ${torchOn ? "bg-yellow-400 text-black" : "bg-black/60 text-white"}`}
+            className={`absolute right-3 bottom-3 rounded-full p-3 ${torchOn ? "bg-lime text-black" : "bg-black/60 text-white"}`}
           >
             <Flashlight className="size-6" />
           </button>

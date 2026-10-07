@@ -19,7 +19,7 @@ export interface BusinessDefaults {
 export const EMPTY_BUSINESS: BusinessDefaults = {
   name: "",
   slug: "",
-  primary_color: "#111827",
+  primary_color: "#0D0D0D",
   text_color: "#FFFFFF",
   default_country: "CO",
   timezone: "America/Bogota",
