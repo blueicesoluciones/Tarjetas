@@ -11,7 +11,6 @@ export const registerSchema = z
     slug: z.string().min(1),
     fullName: z.string().trim().min(2, "Ingresa tu nombre").max(80, "Nombre demasiado largo"),
     phone: z.string().trim().min(6, "Ingresa tu teléfono").max(25),
-    email: z.union([z.literal(""), z.string().trim().email("Email inválido").max(120)]).optional(),
     pin: pinSchema,
     pinConfirm: z.string(),
     privacyAccepted: z.literal(true, { message: "Debes autorizar el tratamiento de tus datos para crear la tarjeta" }),

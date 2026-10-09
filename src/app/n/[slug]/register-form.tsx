@@ -39,7 +39,7 @@ export function RegisterForm({
     formState: { errors, isSubmitting },
   } = useForm<FormInput, unknown, FormOutput>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { slug, fullName: "", phone: "", email: "", pin: "", pinConfirm: "", marketingConsent: false },
+    defaultValues: { slug, fullName: "", phone: "", pin: "", pinConfirm: "", marketingConsent: false },
   });
 
   async function onSubmit(values: FormOutput) {
@@ -78,13 +78,6 @@ export function RegisterForm({
         />
         {phone.hint && !errors.phone ? <p className="text-xs text-muted-foreground">{phone.hint}</p> : null}
         <FieldError message={errors.phone?.message} />
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="email">
-          Email <span className="font-normal text-muted-foreground">(opcional)</span>
-        </Label>
-        <Input id="email" type="email" autoComplete="email" className="h-11" {...register("email")} />
-        <FieldError message={errors.email?.message} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">

@@ -100,7 +100,6 @@ export async function registerCustomer(
       business_id: business.id,
       full_name: input.fullName,
       phone_e164: phone,
-      email: input.email || null,
       pin_hash: pinHash,
       marketing_consent: input.marketingConsent,
       privacy_accepted_at: new Date().toISOString(),

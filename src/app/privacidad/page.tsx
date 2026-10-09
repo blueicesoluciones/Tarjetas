@@ -41,7 +41,6 @@ export default function PrivacyPage() {
       <ul>
         <li>Nombre.</li>
         <li>Número de celular.</li>
-        <li>Correo electrónico, solo si decides darlo (es opcional).</li>
         <li>
           Un PIN de 4 dígitos, que se guarda cifrado de forma irreversible. Nadie puede verlo: ni el negocio ni{" "}
           {company}.
@@ -114,7 +113,7 @@ export default function PrivacyPage() {
         </li>
       </ul>
       <p>
-        Al eliminar tus datos se borran tu nombre, celular, correo y PIN, y tu tarjeta queda desactivada. Se conserva
+        Al eliminar tus datos se borran tu nombre, celular y PIN, y tu tarjeta queda desactivada. Se conserva
         solo información estadística anónima que no permite identificarte.
       </p>
 

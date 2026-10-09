@@ -142,7 +142,6 @@ Entrada: el cliente abre `/n/[slug]` desde un QR impreso, enlace compartido por 
 4. Formulario de creación:
    - Nombre (obligatorio)
    - Teléfono (obligatorio, normalizado a E.164, país por defecto configurable por negocio)
-   - Email (opcional)
    - PIN de 4 dígitos + confirmación (obligatorio)
    - Casilla de aceptación de política de privacidad (obligatoria) con enlace a `/privacidad`
    - Casilla de consentimiento para recibir promociones (opcional, desmarcada por defecto)
@@ -689,7 +688,7 @@ Incluir un `.env.example` con todas las claves vacías.
 
 ## 16. Privacidad y legal (mínimo requerido)
 
-- Páginas `/privacidad` y `/terminos` con texto base editable (qué datos se recogen: nombre, teléfono, email opcional; para qué; cuánto tiempo; cómo pedir su eliminación; quién es el responsable). Google las exige para aprobar producción.
+- Páginas `/privacidad` y `/terminos` con texto base editable (qué datos se recogen: nombre, teléfono y PIN; para qué; cuánto tiempo; cómo pedir su eliminación; quién es el responsable). Google las exige para aprobar producción.
 - Casilla de aceptación obligatoria en la inscripción; guardar `privacy_accepted_at`.
 - Consentimiento de marketing separado y opcional.
 - Función para que el owner o super_admin elimine un cliente a pedido (borrar datos personales, conservar eventos anonimizados para estadísticas).
@@ -799,6 +798,7 @@ Trabajar **una tarea a la vez**, con commit al terminar cada una. Cada fase tien
 10. Supabase Free + Vercel Hobby al inicio.
 11. Sin envío de correos: el super admin crea todos los usuarios de staff con contraseña.
 12. El PIN temporal lo puede elegir el owner (opcional) o se genera aleatorio.
+    La inscripción pide solo **nombre, celular y PIN** (no se pide correo).
 13. País de operación: **Colombia**. El cliente escribe su celular de 10 dígitos (con o sin espacios, con o sin +57) y se guarda en E.164 (+57…).
 14. Marca: **stamp** (símbolo: cebra con QR). Paleta `#0D0D0D` (tinta), `#F7F6F3` (hueso), `#D9D4CA` (arena), `#C7FF3D` (lima, acento), `#6B7A6F` (salvia); tipografía **Sora**. Referencia en `docs/brand/`; logos vectoriales en `public/brand/`. Las páginas del cliente (`/n`, `/t`) usan la marca de cada negocio y solo muestran «Funciona con stamp».
 

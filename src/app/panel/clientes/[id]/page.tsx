@@ -21,7 +21,6 @@ interface CustomerRow {
   business_id: string;
   full_name: string;
   phone_e164: string;
-  email: string | null;
   pin_must_change: boolean;
   pin_locked_until: string | null;
   pin_lockout_count: number;
@@ -57,7 +56,7 @@ export default async function CustomerDetailPage({ params }: PageProps<"/panel/c
   const { data: customer } = await supabase
     .from("customers")
     .select(
-      "id, business_id, full_name, phone_e164, email, pin_must_change, pin_locked_until, pin_lockout_count, marketing_consent, privacy_accepted_at, deleted_at, created_at",
+      "id, business_id, full_name, phone_e164, pin_must_change, pin_locked_until, pin_lockout_count, marketing_consent, privacy_accepted_at, deleted_at, created_at",
     )
     .eq("id", id)
     .eq("business_id", businessId)
@@ -106,7 +105,6 @@ export default async function CustomerDetailPage({ params }: PageProps<"/panel/c
           <CardContent>
             <dl className="space-y-2 text-sm">
               <Item label="Teléfono" value={formatPhone(customer.phone_e164)} />
-              <Item label="Email" value={customer.email ?? "—"} />
               <Item label="Promociones" value={customer.marketing_consent ? "Acepta" : "No acepta"} />
               <Item label="Inscrito" value={formatDate(customer.created_at, timeZone)} />
               <Item label="Código de tarjeta" value={<span className="font-mono">{card?.public_code ?? "—"}</span>} />
