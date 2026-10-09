@@ -47,3 +47,10 @@ blueice-wallet-*.json
 *service-account*.json
 env.vercel
 vercel-*.env
+
+# Certificados y claves de Apple Wallet (nunca al repo)
+*.p12
+*.cer
+*.p8
+*.pem
+*.certSigningRequest
