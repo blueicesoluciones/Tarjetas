@@ -11,7 +11,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   const ctx = await requireStaff(["super_admin"]);
   if (ctx.profile.role !== "super_admin") return null;
   return (
-    <StaffShell title="Administración" userName={ctx.profile.full_name} nav={NAV}>
+    <StaffShell homeHref="/admin" title="Administración" userName={ctx.profile.full_name} nav={NAV}>
       {children}
     </StaffShell>
   );

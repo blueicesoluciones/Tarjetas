@@ -20,6 +20,7 @@ export default async function PanelLayout({ children }: LayoutProps<"/panel">) {
 
   return (
     <StaffShell
+      homeHref="/panel"
       title={business.name}
       userName={ctx.profile.full_name}
       nav={NAV}

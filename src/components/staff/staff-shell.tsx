@@ -7,13 +7,15 @@ import { NavLinks, type NavItem } from "./nav-links";
 
 interface StaffShellProps {
   title: string;
+  /** Inicio de la sección (logo y título llevan aquí, no a la portada pública). */
+  homeHref: string;
   userName: string;
   nav: NavItem[];
   impersonatingName?: string | null;
   children: React.ReactNode;
 }
 
-export function StaffShell({ title, userName, nav, impersonatingName, children }: StaffShellProps) {
+export function StaffShell({ title, homeHref, userName, nav, impersonatingName, children }: StaffShellProps) {
   return (
     <div className="flex min-h-dvh flex-col">
       {impersonatingName ? (
@@ -30,7 +32,7 @@ export function StaffShell({ title, userName, nav, impersonatingName, children }
       ) : null}
       <header className="border-b bg-background">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-          <Link href="/" className="flex items-center gap-2.5" aria-label="stamp, inicio">
+          <Link href={homeHref} className="flex items-center gap-2.5" aria-label={`${title}, inicio`}>
             <StampLogo height={26} />
             <span className="hidden border-l border-border pl-2.5 text-sm text-muted-foreground sm:inline">{title}</span>
           </Link>
