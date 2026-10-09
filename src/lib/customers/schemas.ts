@@ -28,6 +28,14 @@ export const loginSchema = z.object({
 
 export type LoginInput = z.input<typeof loginSchema>;
 
+/** Ingreso a la tarjeta guardada en este equipo: solo el PIN (el celular sale de la sesión). */
+export const savedLoginSchema = z.object({
+  slug: z.string().min(1),
+  pin: z.string().regex(/^\d{4}$/, "El PIN tiene 4 dígitos"),
+});
+
+export type SavedLoginInput = z.input<typeof savedLoginSchema>;
+
 export const changePinSchema = z
   .object({ pin: pinSchema, pinConfirm: z.string() })
   .refine((d) => d.pin === d.pinConfirm, { message: "Los PIN no coinciden", path: ["pinConfirm"] });

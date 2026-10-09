@@ -2,7 +2,13 @@ import "server-only";
 import { compare, hash } from "bcryptjs";
 import { after } from "next/server";
 import { writeAudit } from "@/lib/audit";
-import { clearPinChangeTicket, getPinChangeTicket, setCustomerSession, setPinChangeTicket } from "@/lib/customer-session";
+import {
+  clearPinChangeTicket,
+  getCustomerSession,
+  getPinChangeTicket,
+  setCustomerSession,
+  setPinChangeTicket,
+} from "@/lib/customer-session";
 import {
   getLockStatus,
   registerFailedAttempt,
@@ -15,7 +21,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createCardEverywhere } from "@/lib/wallet";
 import type { Business, Customer, Program } from "@/types/db";
 import type { z } from "zod";
-import type { changePinSchema, loginSchema, registerSchema } from "./schemas";
+import type { changePinSchema, loginSchema, registerSchema, savedLoginSchema } from "./schemas";
 
 export const BCRYPT_COST = 10;
 
@@ -233,6 +239,45 @@ export async function loginCustomer(input: z.output<typeof loginSchema>, ip: str
 
   await setCustomerSession({ cardId: card.id, businessId: business.id });
   return { ok: true, redirectTo: `/t/${card.access_token}` };
+}
+
+// ---------------------------------------------------------------------------
+// Tarjeta guardada en este equipo (cookie de sesión del negocio)
+// ---------------------------------------------------------------------------
+export interface SavedCard {
+  firstName: string;
+  phoneE164: string;
+}
+
+/**
+ * Cliente cuya tarjeta quedó guardada en este navegador. No da acceso por sí
+ * sola: para ver la tarjeta se pide el PIN (varias personas pueden usar el equipo).
+ */
+export async function getSavedCard(businessId: string): Promise<SavedCard | null> {
+  const session = await getCustomerSession(businessId);
+  if (!session) return null;
+  const { data } = await createAdminClient()
+    .from("cards")
+    .select("customers(full_name, phone_e164, deleted_at)")
+    .eq("id", session.cardId)
+    .eq("business_id", businessId)
+    .maybeSingle<{ customers: { full_name: string; phone_e164: string; deleted_at: string | null } }>();
+  if (!data || data.customers.deleted_at) return null;
+  return {
+    firstName: data.customers.full_name.trim().split(/\s+/)[0],
+    phoneE164: data.customers.phone_e164,
+  };
+}
+
+/** Ingreso con PIN a la tarjeta guardada en este equipo (mismas reglas de bloqueo). */
+export async function loginSavedCard(input: z.output<typeof savedLoginSchema>, ip: string): Promise<ServiceResult> {
+  const { business } = await getBusinessBySlug(input.slug);
+  if (!business) return { ok: false, error: "Negocio no encontrado", status: 404 };
+  const saved = await getSavedCard(business.id);
+  if (!saved) {
+    return { ok: false, code: "no_saved_card", error: "Ingresa con tu celular y tu PIN.", status: 401 };
+  }
+  return loginCustomer({ slug: input.slug, phone: saved.phoneE164, pin: input.pin }, ip);
 }
 
 async function activeCardFor(customerId: string, businessId: string) {

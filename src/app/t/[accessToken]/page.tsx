@@ -124,7 +124,7 @@ export default async function WebCardPage({ params, searchParams }: PageProps<"/
           <ul className="mt-2 space-y-2 text-muted-foreground">
             <li>
               <strong className="text-foreground">Escanea de nuevo el QR de {business.name}</strong> (el del local o el que
-              te compartieron) y toca <strong className="text-foreground">Ver mi tarjeta</strong>.
+              te compartieron) y toca <strong className="text-foreground">Ver mi tarjeta</strong> (te pedirá tu PIN).
             </li>
             <li>
               O <strong className="text-foreground">guarda esta página</strong> en tus favoritos o en la pantalla de inicio.

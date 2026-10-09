@@ -137,7 +137,7 @@ Plataforma SaaS multi-negocio (multi-tenant) que se vende a emprendimientos (caf
 Entrada: el cliente abre `/n/[slug]` desde un QR impreso, enlace compartido por WhatsApp, redes, etc.
 
 1. **Detección de dispositivo** (ver 6.10) y **detección de navegador interno** (ver 6.11).
-2. **Siempre se muestra el formulario** (varias personas pueden inscribirse desde el mismo equipo). Si el navegador ya tiene una tarjeta de ese negocio (cookie de sesión válida), se muestra arriba un acceso «¿Eres [nombre]? Ver mi tarjeta».
+2. **Siempre se muestra el formulario** (varias personas pueden inscribirse desde el mismo equipo). Si el navegador ya tiene una tarjeta de ese negocio (cookie de sesión válida), se muestra arriba un acceso «¿Eres [nombre]? Ver mi tarjeta» que **pide el PIN** (solo el PIN; el celular sale de la sesión) antes de mostrar la tarjeta.
 3. Si no, mostrar dos opciones: **"Crear mi tarjeta"** y **"Ya tengo tarjeta"**.
 4. Formulario de creación:
    - Nombre (obligatorio)
@@ -158,7 +158,7 @@ Entrada: el cliente abre `/n/[slug]` desde un QR impreso, enlace compartido por 
 ### 6.3 Reingreso del cliente (sin Wallet)
 
 1. El cliente escanea de nuevo el QR del local o abre `/n/[slug]`.
-2. Si hay cookie válida → acceso «Ver mi tarjeta» en la página del negocio.
+2. Si hay cookie válida → acceso «Ver mi tarjeta» en la página del negocio, que pide el PIN.
 3. Si no → "Ya tengo tarjeta" → teléfono + PIN.
 4. Servidor valida con límite de intentos (ver 7.2).
 5. Si es correcto → crea cookie de sesión y redirige a `/t/[accessToken]`.
