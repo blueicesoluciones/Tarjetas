@@ -197,7 +197,7 @@ export async function GET(request: Request) {
         <div style={{ display: "flex", flexDirection: "column", width: 420 }}>
           <span style={{ fontSize: 44, fontWeight: 800, lineHeight: 1.1 }}>Escanea y crea tu tarjeta</span>
           <span style={{ fontSize: 28, marginTop: 14, opacity: 0.9 }}>
-            Sin apps ni contraseñas. Solo tu nombre, teléfono y un PIN.
+            Sin apps ni contraseñas. Solo tu nombre, celular y un PIN.
           </span>
           <span style={{ fontSize: 22, marginTop: 18, opacity: 0.7 }}>{url.replace(/^https?:\/\//, "")}</span>
         </div>

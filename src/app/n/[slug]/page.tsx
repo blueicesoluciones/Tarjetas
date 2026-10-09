@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import { PoweredByStamp } from "@/components/brand/logo";
 import { BrandHeader } from "@/components/customer/brand-header";
@@ -23,16 +22,21 @@ export default async function BusinessLandingPage({ params }: PageProps<"/n/[slu
   const { slug } = await params;
   const { business, program } = await loadPublicBusiness(slug);
 
-  // Si el dispositivo ya tiene una tarjeta de este negocio, directo a ella.
+  // Siempre se muestra el formulario: varias personas pueden inscribirse desde el
+  // mismo equipo. Si este navegador ya tiene una tarjeta del negocio, se ofrece
+  // un acceso directo a ella (solo con el primer nombre).
   const session = await getCustomerSession(business.id);
+  let savedCard: { accessToken: string; firstName: string } | null = null;
   if (session) {
     const { data: card } = await createAdminClient()
       .from("cards")
-      .select("access_token, status")
+      .select("access_token, customers(full_name, deleted_at)")
       .eq("id", session.cardId)
       .eq("business_id", business.id)
-      .maybeSingle<{ access_token: string; status: string }>();
-    if (card) redirect(`/t/${card.access_token}`);
+      .maybeSingle<{ access_token: string; customers: { full_name: string; deleted_at: string | null } }>();
+    if (card && !card.customers.deleted_at) {
+      savedCard = { accessToken: card.access_token, firstName: card.customers.full_name.trim().split(/\s+/)[0] };
+    }
   }
 
   const device = detectDevice(await userAgent());
@@ -51,6 +55,18 @@ export default async function BusinessLandingPage({ params }: PageProps<"/n/[slu
       <main className="mx-auto -mt-10 max-w-md space-y-4 px-4 pb-12">
         {device.inAppBrowser ? <InAppBrowserNotice app={device.inAppBrowser} platform={device.platform} /> : null}
 
+        {savedCard && !suspended ? (
+          <Link
+            href={`/t/${savedCard.accessToken}`}
+            className="flex items-center justify-between gap-3 rounded-2xl bg-background p-4 shadow-sm transition-colors hover:bg-muted"
+          >
+            <span className="text-sm">
+              ¿Eres <strong>{savedCard.firstName}</strong>? Ya tienes una tarjeta en este equipo.
+            </span>
+            <span className="shrink-0 text-sm font-semibold underline">Ver mi tarjeta</span>
+          </Link>
+        ) : null}
+
         {suspended ? (
           <div className="rounded-2xl bg-background p-6 text-center shadow-sm">
             <p className="font-medium">Este negocio no está recibiendo inscripciones por ahora.</p>
@@ -59,7 +75,7 @@ export default async function BusinessLandingPage({ params }: PageProps<"/n/[slu
           <>
             <section className="rounded-2xl bg-background p-5 shadow-sm">
               <h2 className="text-lg font-semibold">Crear mi tarjeta</h2>
-              <p className="mb-4 text-sm text-muted-foreground">Sin apps ni contraseñas. Solo tu nombre, teléfono y un PIN.</p>
+              <p className="mb-4 text-sm text-muted-foreground">Sin apps ni contraseñas. Solo tu nombre, celular y un PIN.</p>
               <RegisterForm slug={business.slug} country={business.default_country} buttonColor={business.primary_color} buttonText={business.text_color} />
             </section>
             <Link
