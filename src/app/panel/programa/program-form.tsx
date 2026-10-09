@@ -260,18 +260,20 @@ function CardPreview({
   logoUrl: string | null;
   backgroundUrl: string | null;
 }) {
-  const [tab, setTab] = useState<"web" | "wallet">("web");
+  const [tab, setTab] = useState<"web" | "wallet" | "apple">("web");
   const bg = /^#[0-9A-Fa-f]{6}$/.test(values.primaryColor) ? values.primaryColor : "#0D0D0D";
   const fg = /^#[0-9A-Fa-f]{6}$/.test(values.textColor) ? values.textColor : "#FFFFFF";
   const name = values.businessName || "Tu negocio";
+  const previewProps: PreviewProps = { values, name, bg, fg, required, count, logoUrl, backgroundUrl };
 
   return (
     <div className="space-y-3">
-      <div role="tablist" className="grid grid-cols-2 rounded-full bg-muted p-1 text-sm">
+      <div role="tablist" className="grid grid-cols-3 rounded-full bg-muted p-1 text-xs">
         {(
           [
             ["web", "Tarjeta web"],
             ["wallet", "Google Wallet"],
+            ["apple", "Apple Wallet"],
           ] as const
         ).map(([id, label]) => (
           <button
@@ -280,7 +282,7 @@ function CardPreview({
             role="tab"
             aria-selected={tab === id}
             onClick={() => setTab(id)}
-            className={`rounded-full px-3 py-1.5 font-medium transition-colors ${
+            className={`rounded-full px-2 py-1.5 font-medium whitespace-nowrap transition-colors ${
               tab === id ? "bg-background shadow-sm" : "text-muted-foreground"
             }`}
           >
@@ -292,16 +294,20 @@ function CardPreview({
       <div className="mx-auto w-full max-w-[320px] rounded-[2.6rem] bg-ink p-2.5 shadow-xl">
         <div className="h-[600px] overflow-y-auto rounded-[2.1rem] bg-[#f2f1ee] px-3 pt-8 pb-6 [scrollbar-width:none]">
           {tab === "web" ? (
-            <WebCardPreview values={values} name={name} bg={bg} fg={fg} required={required} count={count} logoUrl={logoUrl} backgroundUrl={backgroundUrl} />
+            <WebCardPreview {...previewProps} />
+          ) : tab === "wallet" ? (
+            <WalletPreview {...previewProps} />
           ) : (
-            <WalletPreview values={values} name={name} bg={bg} fg={fg} required={required} count={count} logoUrl={logoUrl} backgroundUrl={backgroundUrl} />
+            <ApplePreview {...previewProps} />
           )}
         </div>
       </div>
       <p className="text-center text-xs text-muted-foreground">
         {tab === "web"
           ? "Así la ve tu cliente al abrir su tarjeta."
-          : "Aproximación: Google define la tipografía y el orden exacto. La parte superior siempre es de color sólido."}
+          : tab === "wallet"
+            ? "Aproximación: Google define la tipografía y el orden exacto. La parte superior siempre es de color sólido."
+            : "Aproximación del diseño en iPhone. Se activa cuando Apple apruebe la cuenta de desarrollador."}
       </p>
     </div>
   );
@@ -397,6 +403,58 @@ function WalletPreview({ values, name, bg, fg, required, count, logoUrl, backgro
   );
 }
 
+/**
+ * Apple Wallet (pase storeCard): encabezado con logo y sellos, franja de imagen
+ * (strip, 375×144) con los sellos, campos de cliente y premio, y el QR abajo.
+ */
+function ApplePreview({ values, name, bg, fg, required, count, logoUrl, backgroundUrl }: PreviewProps) {
+  return (
+    <article className="overflow-hidden rounded-2xl shadow-lg" style={{ backgroundColor: bg, color: fg }}>
+      <div className="flex items-center gap-2 px-3 pt-3 pb-2.5">
+        <BusinessLogo name={name} logoUrl={logoUrl} primaryColor={bg} textColor={fg} size={26} />
+        <p className="min-w-0 flex-1 truncate text-sm font-semibold">{name}</p>
+        <div className="text-right">
+          <p className="text-[9px] font-semibold tracking-wide uppercase opacity-75">Sellos</p>
+          <p className="text-sm font-semibold tabular-nums">
+            {count} / {required}
+          </p>
+        </div>
+      </div>
+      <div
+        className="relative aspect-[375/144] w-full"
+        style={
+          backgroundUrl
+            ? {
+                backgroundImage: `linear-gradient(${bg}A6, ${bg}A6), url("${backgroundUrl}")`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }
+            : { backgroundColor: bg }
+        }
+      >
+        <div className="absolute inset-0 flex items-center px-1">
+          <StampGrid count={count} required={required} primaryColor={bg} textColor={fg} />
+        </div>
+      </div>
+      <div className="flex justify-between gap-3 px-3 pt-3 text-left">
+        <div className="min-w-0">
+          <p className="text-[9px] font-semibold tracking-wide uppercase opacity-75">Cliente</p>
+          <p className="truncate text-sm">Camila Rojas</p>
+        </div>
+        <div className="min-w-0 text-right">
+          <p className="text-[9px] font-semibold tracking-wide uppercase opacity-75">Premio</p>
+          <p className="truncate text-sm">{values.rewardDescription}</p>
+        </div>
+      </div>
+      <p className="px-3 pt-2 text-[11px] font-medium opacity-90">{values.cardTitle}</p>
+      <div className="mx-auto mt-4 mb-4 w-fit rounded-lg bg-white p-2.5 text-center text-neutral-900">
+        <QRCodeSVG value={`LC1:${SAMPLE_CODE}`} size={110} level="M" marginSize={0} />
+        <p className="mt-1 font-mono text-[9px] tracking-widest text-neutral-500">{SAMPLE_CODE}</p>
+      </div>
+    </article>
+  );
+}
+
 /** Sube o quita una imagen (logo o fondo) y refresca la página. */
 function useImageUpload(kind: "logo" | "background", maxMb: number) {
   const router = useRouter();
@@ -484,7 +542,7 @@ function BackgroundPicker({ backgroundUrl }: { backgroundUrl: string | null }) {
     <div className="space-y-3 rounded-xl border p-4">
       <div>
         <p className="text-sm font-medium">Fondo de la tarjeta</p>
-        <p className="text-xs text-muted-foreground">Se usa en la tarjeta web, en tu página de inscripción y en Google Wallet.</p>
+        <p className="text-xs text-muted-foreground">Se usa en la tarjeta web, en tu página de inscripción y en la franja de sellos de Google Wallet y Apple Wallet.</p>
       </div>
       <div className="grid grid-cols-2 gap-2 text-sm">
         {(
