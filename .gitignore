@@ -54,3 +54,6 @@ vercel-*.env
 *.p8
 *.pem
 *.certSigningRequest
+
+# Certificados y llaves de Apple Wallet (nunca al repo)
+apple-secrets/
