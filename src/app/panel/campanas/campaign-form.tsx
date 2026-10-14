@@ -66,12 +66,12 @@ export function CampaignForm({ businessName, audience, disabled }: { businessNam
       <div>
         <p className="mb-2 text-sm font-medium">Así llega al celular</p>
         <div className="rounded-2xl bg-ink p-4 text-paper shadow-lg">
-          <p className="text-xs text-paper/60">Google Wallet · {businessName}</p>
+          <p className="text-xs text-paper/60">Wallet · {businessName}</p>
           <p className="mt-1 font-semibold">{title || "Título del aviso"}</p>
           <p className="mt-0.5 text-sm text-paper/80">{message || "El mensaje aparece aquí."}</p>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          También queda guardado dentro de la tarjeta en Google Wallet.
+          También queda guardado dentro de la tarjeta en Google Wallet y Apple Wallet.
         </p>
       </div>
     </div>

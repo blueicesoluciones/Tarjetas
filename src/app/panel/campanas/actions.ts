@@ -37,7 +37,7 @@ export async function sendCampaign(_prev: CampaignFormState, formData: FormData)
 
   const audience = await campaignAudience(business.id);
   if (audience.length === 0) {
-    return { error: "Aún no hay clientes con la tarjeta en Google Wallet que acepten promociones." };
+    return { error: "Aún no hay clientes con la tarjeta en Google o Apple Wallet que acepten promociones." };
   }
 
   const { data: campaign, error } = await createAdminClient()

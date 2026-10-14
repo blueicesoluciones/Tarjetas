@@ -40,7 +40,7 @@ export default async function CampaignsPage() {
   if (plan.campaignsPerMonth === 0) {
     return (
       <>
-        <PageHeader title="Campañas" description="Avisos a los clientes que tienen tu tarjeta en Google Wallet." />
+        <PageHeader title="Campañas" description="Avisos a los clientes que tienen tu tarjeta en Google Wallet o Apple Wallet." />
         <LockedFeature
           title="Campañas por Wallet"
           description='Envía avisos como "Hoy 2x1 en capuchinos" directo al celular de quienes tienen tu tarjeta guardada.'
@@ -67,7 +67,7 @@ export default async function CampaignsPage() {
     <>
       <PageHeader
         title="Campañas"
-        description="Envía un aviso al celular de los clientes que tienen tu tarjeta en Google Wallet."
+        description="Envía un aviso al celular de los clientes que tienen tu tarjeta en Google Wallet o Apple Wallet."
         action={
           <Badge variant="outline" className="h-7 px-3 text-sm">
             {left === null ? "Sin límite mensual" : `Te quedan ${left} de ${plan.campaignsPerMonth} este mes`}
@@ -82,7 +82,7 @@ export default async function CampaignsPage() {
         <CardContent className="space-y-4">
           <p className="rounded-lg bg-muted p-3 text-sm">
             Le llegará a <strong>{audience.length}</strong> {audience.length === 1 ? "cliente" : "clientes"}: los que
-            tienen la tarjeta guardada en Google Wallet y <strong>aceptaron recibir promociones</strong> al inscribirse
+            tienen la tarjeta guardada en Google o Apple Wallet y <strong>aceptaron recibir promociones</strong> al inscribirse
             (así lo exige la ley de protección de datos). Google limita cuántas notificaciones muestra al día por tarjeta,
             así que úsalas para algo especial.
           </p>

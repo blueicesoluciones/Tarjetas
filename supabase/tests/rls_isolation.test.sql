@@ -121,6 +121,7 @@ select is(
 reset role;
 update public.businesses set plan = 'medium' where id = '11111111-1111-1111-1111-111111111111';
 delete from public.program_rewards where program_id = '11111111-0000-0000-0000-000000000001';
+update public.cards set claimed_milestones = '{}' where id = '11111111-0000-0000-0000-0000000ca001';
 insert into public.program_rewards (business_id, program_id, stamps_at, description)
 values ('11111111-1111-1111-1111-111111111111', '11111111-0000-0000-0000-000000000001', 5, 'Descuento');
 

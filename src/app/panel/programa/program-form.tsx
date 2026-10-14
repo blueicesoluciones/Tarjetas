@@ -321,7 +321,7 @@ function CardPreview({
           ? "Así la ve tu cliente al abrir su tarjeta."
           : tab === "wallet"
             ? "Aproximación: Google define la tipografía y el orden exacto. La parte superior siempre es de color sólido."
-            : "Aproximación del diseño en iPhone. Se activa cuando Apple apruebe la cuenta de desarrollador."}
+            : "Aproximación: Apple define la tipografía y el orden exacto en el iPhone."}
       </p>
     </div>
   );

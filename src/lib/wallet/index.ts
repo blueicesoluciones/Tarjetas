@@ -38,6 +38,8 @@ interface CardRow {
   stamps_count: number;
   claimed_milestones: number[];
   google_object_id: string | null;
+  apple_serial_number: string | null;
+  apple_message: string | null;
   customers: { full_name: string };
   programs: {
     card_title: string;
@@ -52,7 +54,7 @@ export async function loadWalletCardData(cardId: string): Promise<WalletCardData
   const { data } = await createAdminClient()
     .from("cards")
     .select(
-      "id, program_id, public_code, access_token, stamps_count, claimed_milestones, google_object_id, customers(full_name), programs(card_title, stamps_required, reward_description, design_version), businesses(name, logo_url, primary_color, text_color, plan)",
+      "id, program_id, public_code, access_token, stamps_count, claimed_milestones, google_object_id, apple_serial_number, apple_message, customers(full_name), programs(card_title, stamps_required, reward_description, design_version), businesses(name, logo_url, primary_color, text_color, plan)",
     )
     .eq("id", cardId)
     .maybeSingle<CardRow>();
@@ -78,6 +80,8 @@ export async function loadWalletCardData(cardId: string): Promise<WalletCardData
     stampsImageUrl: stampsImageUrl(data.program_id, data.stamps_count, data.programs.design_version),
     webCardUrl: appUrl(`/t/${data.access_token}`),
     googleObjectId: data.google_object_id,
+    appleSerialNumber: data.apple_serial_number,
+    appleMessage: data.apple_message,
   };
 }
 
@@ -194,7 +198,7 @@ export async function syncProgramCards(programId: string, batchSize = 20): Promi
       .from("cards")
       .select("id")
       .eq("program_id", programId)
-      .not("google_object_id", "is", null)
+      .or("google_object_id.not.is.null,apple_serial_number.not.is.null")
       .order("created_at")
       .range(from, from + batchSize - 1);
     if (!data || data.length === 0) break;

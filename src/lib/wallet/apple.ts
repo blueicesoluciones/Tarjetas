@@ -1,39 +1,39 @@
 import "server-only";
-import { NotImplementedError, type WalletProvider } from "./types";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { appleConfig } from "./apple-config";
+import { pushPassUpdate } from "./apns";
+import type { WalletProvider } from "./types";
 
 /**
- * Apple Wallet — stub (CLAUDE.md §12). Se habilita con APPLE_WALLET_ENABLED=true
- * cuando exista la cuenta de Apple Developer.
+ * Apple Wallet (CLAUDE.md §12). El .pkpass se genera bajo demanda en
+ * GET /api/apple/pass/[accessToken] y en el Web Service (/api/apple/v1/...);
+ * aquí solo se avisa a los dispositivos registrados cuando la tarjeta cambia.
  */
 export const appleWallet: WalletProvider = {
   id: "apple",
 
   isEnabled() {
-    return process.env.APPLE_WALLET_ENABLED === "true";
+    return appleConfig() !== null;
   },
 
   async ensureProgram() {
-    // TODO(apple): no hay "clase" en Apple; el diseño va dentro de cada pase.
-    // Nada que hacer aquí salvo validar certificados al habilitar.
+    // Apple no tiene "clase": el diseño va dentro de cada pase.
   },
 
   async createCard() {
-    // TODO(apple): asignar cards.apple_serial_number (uuid) y cards.apple_auth_token
-    // (≥16 chars aleatorio) si faltan. El .pkpass se genera bajo demanda en
-    // GET /api/apple/pass/[accessToken] con passkit-generator (storeCard, strip =
-    // imagen de sellos, barcodes QR LC1:<public_code>, webServiceURL /api/apple).
-    throw new NotImplementedError("Apple Wallet createCard");
+    // El serial y el token se asignan al descargar el pase por primera vez.
   },
 
-  async getAddToWalletUrl() {
-    // TODO(apple): devolver `${APP_URL}/api/apple/pass/${accessToken}`.
-    throw new NotImplementedError("Apple Wallet getAddToWalletUrl");
+  async getAddToWalletUrl(data) {
+    const accessToken = data.webCardUrl.split("/t/")[1];
+    return data.webCardUrl.replace(`/t/${accessToken}`, `/api/apple/pass/${accessToken}`);
   },
 
-  async syncCard() {
-    // TODO(apple): cards.updated_at ya cambia con cada sello (trigger). Enviar push
-    // APNs vacío ({}) por HTTP/2 a cada push_token de apple_device_registrations
-    // con topic = APPLE_PASS_TYPE_ID y JWT firmado con la clave .p8 (runtime Node).
-    throw new NotImplementedError("Apple Wallet syncCard");
+  async syncCard(data) {
+    if (!data.appleSerialNumber) return;
+    // El iPhone pregunta qué pases cambiaron desde su última marca (cards.updated_at).
+    // Un cambio de diseño no toca la tarjeta, así que se marca aquí antes del aviso.
+    await createAdminClient().from("cards").update({ updated_at: new Date().toISOString() }).eq("id", data.cardId);
+    await pushPassUpdate(data.appleSerialNumber);
   },
 };

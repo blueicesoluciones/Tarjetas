@@ -20,6 +20,10 @@ export interface WalletCardData {
   stampsImageUrl: string; // imagen dinámica de sellos
   webCardUrl: string; // enlace a /t/[accessToken]
   googleObjectId: string | null;
+  /** Serial del pase de Apple (null si nunca se agregó a Apple Wallet). */
+  appleSerialNumber: string | null;
+  /** Último aviso (campaña o «Te extrañamos») para el pase de Apple. */
+  appleMessage: string | null;
 }
 
 export interface WalletProgramData {

@@ -1,25 +1,32 @@
 import "server-only";
 import { startOfLocalMonth } from "@/lib/panel/format";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { googleWallet } from "@/lib/wallet";
+import { appleWallet, googleWallet } from "@/lib/wallet";
+import { pushPassUpdate } from "@/lib/wallet/apns";
 import { sendGoogleWalletMessage } from "@/lib/wallet/google";
 
+/** Pase al que llega un aviso: Google Wallet, Apple Wallet o ambos. */
+export interface WalletTarget {
+  cardId: string;
+  objectId: string | null;
+  appleSerial: string | null;
+}
+
 /**
- * Destinatarios de un aviso promocional: tarjetas activas guardadas en Google
- * Wallet de clientes que aceptaron recibir promociones (Ley 1581).
- * TODO(apple): sumar los pases de Apple Wallet cuando esté activo.
+ * Destinatarios de un aviso promocional: tarjetas activas guardadas en Google o
+ * Apple Wallet de clientes que aceptaron recibir promociones (Ley 1581).
  */
-export async function campaignAudience(businessId: string): Promise<{ cardId: string; objectId: string }[]> {
+export async function campaignAudience(businessId: string): Promise<WalletTarget[]> {
   const { data } = await createAdminClient()
     .from("cards")
-    .select("id, google_object_id, customers!inner(marketing_consent, deleted_at)")
+    .select("id, google_object_id, apple_serial_number, customers!inner(marketing_consent, deleted_at)")
     .eq("business_id", businessId)
     .eq("status", "active")
-    .not("google_object_id", "is", null)
+    .or("google_object_id.not.is.null,apple_serial_number.not.is.null")
     .eq("customers.marketing_consent", true)
     .is("customers.deleted_at", null)
-    .returns<{ id: string; google_object_id: string }[]>();
-  return (data ?? []).map((c) => ({ cardId: c.id, objectId: c.google_object_id }));
+    .returns<{ id: string; google_object_id: string | null; apple_serial_number: string | null }[]>();
+  return (data ?? []).map((c) => ({ cardId: c.id, objectId: c.google_object_id, appleSerial: c.apple_serial_number }));
 }
 
 /** Campañas enviadas en el mes calendario actual (zona horaria del negocio). */
@@ -33,25 +40,43 @@ export async function campaignsThisMonth(businessId: string, timeZone: string): 
   return count ?? 0;
 }
 
+/** Envía el aviso a un pase. Apple: se guarda en la tarjeta y se avisa al iPhone. */
+async function deliverOne(target: WalletTarget, header: string, body: string): Promise<boolean> {
+  const tasks: Promise<unknown>[] = [];
+  if (target.objectId && googleWallet.isEnabled()) tasks.push(sendGoogleWalletMessage(target.objectId, header, body));
+  if (target.appleSerial && appleWallet.isEnabled()) {
+    tasks.push(
+      (async () => {
+        await createAdminClient()
+          .from("cards")
+          .update({ apple_message: `${header}: ${body}`.slice(0, 400) })
+          .eq("id", target.cardId);
+        await pushPassUpdate(target.appleSerial!);
+      })(),
+    );
+  }
+  if (tasks.length === 0) return false;
+  const results = await Promise.allSettled(tasks);
+  for (const r of results) {
+    if (r.status === "rejected") console.error("[campaign] envío fallido", r.reason instanceof Error ? r.reason.message : r.reason);
+  }
+  return results.some((r) => r.status === "fulfilled");
+}
+
 /** Envía un mensaje a varios pases con concurrencia limitada. */
 export async function deliverWalletMessage(
-  objectIds: string[],
+  targets: WalletTarget[],
   header: string,
   body: string,
   concurrency = 5,
 ): Promise<{ sent: number; failed: number }> {
   let sent = 0;
   let failed = 0;
-  if (!googleWallet.isEnabled()) return { sent, failed: objectIds.length };
-  for (let i = 0; i < objectIds.length; i += concurrency) {
-    const batch = objectIds.slice(i, i + concurrency);
-    const results = await Promise.allSettled(batch.map((id) => sendGoogleWalletMessage(id, header, body)));
-    for (const r of results) {
-      if (r.status === "fulfilled") sent++;
-      else {
-        failed++;
-        console.error("[campaign] envío fallido", r.reason instanceof Error ? r.reason.message : r.reason);
-      }
+  for (let i = 0; i < targets.length; i += concurrency) {
+    const results = await Promise.all(targets.slice(i, i + concurrency).map((t) => deliverOne(t, header, body)));
+    for (const ok of results) {
+      if (ok) sent++;
+      else failed++;
     }
   }
   return { sent, failed };
@@ -70,7 +95,7 @@ export async function runCampaign(campaignId: string): Promise<void> {
   try {
     const audience = await campaignAudience(campaign.business_id);
     const { sent, failed } = await deliverWalletMessage(
-      audience.map((a) => a.objectId),
+      audience,
       campaign.title,
       campaign.message,
     );

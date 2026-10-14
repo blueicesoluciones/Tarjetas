@@ -91,7 +91,7 @@ export default async function PanelHomePage() {
         countEvents("redeem"),
         countCustomers(weekStart),
         countCustomers(prevWeekStart, prevWeekSameMoment),
-        countCards().not("google_object_id", "is", null),
+        countCards().or("google_object_id.not.is.null,apple_serial_number.not.is.null"),
         admin
           .from("customers")
           .select("id", { count: "exact", head: true })
@@ -124,7 +124,7 @@ export default async function PanelHomePage() {
         hint: `${percent(active30.count ?? 0, totalCustomers)}% de tus clientes vino en el último mes`,
       },
       {
-        label: "En Google Wallet",
+        label: "En Wallet",
         value: inWallet.count ?? 0,
         hint: `${percent(inWallet.count ?? 0, totalCustomers)}% guardó la tarjeta en su celular`,
       },

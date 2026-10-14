@@ -31,7 +31,7 @@ Plataforma SaaS multi-negocio (multi-tenant) que se vende a emprendimientos (caf
 | Tema | Estado |
 |---|---|
 | Google Wallet | Se implementa en modo demo (solo cuentas de prueba) mientras se tramita la aprobación de producción |
-| Apple Wallet | **Pendiente.** No hay cuenta de Apple Developer aún. Implementar solo interfaces y stubs, detrás de un feature flag `APPLE_WALLET_ENABLED=false` |
+| Apple Wallet | **Implementado** (cuenta aprobada, Team ID RA3UKLZ775, Pass Type ID `pass.com.blueicesoluciones.stamp`). Se activa con `APPLE_WALLET_ENABLED=true` y las credenciales en base64. Avisos de campañas y «Te extrañamos» van en el campo «Novedades» del pase (`cards.apple_message`) |
 | Hosting | Vercel plan Hobby (gratis) |
 | Base de datos | Supabase plan Free |
 | Dominio | Pendiente de compra; mientras tanto usar `*.vercel.app` |

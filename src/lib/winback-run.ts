@@ -13,7 +13,8 @@ interface ProgramRow {
 
 interface CardRow {
   id: string;
-  google_object_id: string;
+  google_object_id: string | null;
+  apple_serial_number: string | null;
   last_stamp_at: string;
   winback_sent_at: string | null;
 }
@@ -35,10 +36,10 @@ export async function runWinback(now = new Date()) {
     const cutoff = new Date(now.getTime() - program.winback_days * 86_400_000).toISOString();
     const { data: cards } = await admin
       .from("cards")
-      .select("id, google_object_id, last_stamp_at, winback_sent_at, customers!inner(marketing_consent, deleted_at)")
+      .select("id, google_object_id, apple_serial_number, last_stamp_at, winback_sent_at, customers!inner(marketing_consent, deleted_at)")
       .eq("program_id", program.id)
       .eq("status", "active")
-      .not("google_object_id", "is", null)
+      .or("google_object_id.not.is.null,apple_serial_number.not.is.null")
       .lt("last_stamp_at", cutoff)
       .eq("customers.marketing_consent", true)
       .is("customers.deleted_at", null)
@@ -50,7 +51,7 @@ export async function runWinback(now = new Date()) {
 
     const message = program.winback_message ?? defaultWinbackMessage(program.businesses.name);
     const { sent, failed } = await deliverWalletMessage(
-      due.map((c) => c.google_object_id),
+      due.map((c) => ({ cardId: c.id, objectId: c.google_object_id, appleSerial: c.apple_serial_number })),
       program.businesses.name,
       message,
     );

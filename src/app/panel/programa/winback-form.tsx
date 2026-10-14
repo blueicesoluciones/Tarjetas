@@ -26,7 +26,7 @@ export function WinbackForm({ days, message }: { days: number | null; message: s
       <CardContent>
         <form action={action} className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Cada día revisamos quién lleva varios días sin venir y le enviamos este aviso a su Google Wallet, una sola vez
+            Cada día revisamos quién lleva varios días sin venir y le enviamos este aviso a su Google Wallet o Apple Wallet, una sola vez
             por ausencia. Solo llega a quienes aceptaron recibir promociones.
           </p>
           <label className="flex items-center gap-3 text-sm font-medium">
