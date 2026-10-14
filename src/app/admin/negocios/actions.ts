@@ -1,17 +1,19 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { z } from "zod";
 import { businessFieldsSchema, createBusinessSchema, programFieldsSchema } from "@/lib/admin/schemas";
 import { writeAudit } from "@/lib/audit";
-import { getStaffContext } from "@/lib/auth/staff";
+import { ACTING_BUSINESS_COOKIE, getStaffContext } from "@/lib/auth/staff";
 import { planFeatures } from "@/lib/plans";
 import { cashierLimitError } from "@/lib/plans-server";
 import { createStaffUser, setStaffPassword, staffPasswordSchema, staffUserSchema } from "@/lib/staff-users";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { ensureProgramEverywhere, syncProgramCards } from "@/lib/wallet";
+import { ensureProgramEverywhere, googleWallet, syncProgramCards } from "@/lib/wallet";
+import { expireGoogleWalletObject } from "@/lib/wallet/google";
 import type { Business, Program } from "@/types/db";
 
 export interface AdminFormState {
@@ -334,4 +336,74 @@ export async function setUserActive(formData: FormData): Promise<void> {
     entityId: parsed.data.userId,
   });
   revalidatePath(`/admin/negocios/${profile.business_id}`);
+}
+
+// ---------------------------------------------------------------------------
+// Eliminar negocio (definitivo)
+// ---------------------------------------------------------------------------
+export async function deleteBusiness(businessId: string, _prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
+  const ctx = await requireSuperAdmin();
+  const id = z.guid().parse(businessId);
+  const admin = createAdminClient();
+
+  const { data: business } = await admin.from("businesses").select("*").eq("id", id).maybeSingle<Business>();
+  if (!business) return { error: "Negocio no encontrado" };
+  if (String(formData.get("confirmSlug") ?? "").trim() !== business.slug) {
+    return { error: `Escribe exactamente "${business.slug}" para confirmar` };
+  }
+  if (formData.get("understand") !== "on") return { error: "Marca la casilla para confirmar que entiendes que no se puede deshacer" };
+
+  // Datos que hay que limpiar fuera de la cascada de la base de datos.
+  const [{ data: staff }, { data: walletCards }, { count: customers }, { data: files }] = await Promise.all([
+    admin.from("profiles").select("id").eq("business_id", id).returns<{ id: string }[]>(),
+    admin.from("cards").select("google_object_id").eq("business_id", id).not("google_object_id", "is", null).returns<{ google_object_id: string }[]>(),
+    admin.from("customers").select("id", { count: "exact", head: true }).eq("business_id", id),
+    admin.storage.from("logos").list(id, { limit: 1000 }),
+  ]);
+
+  // Programa, clientes, tarjetas, sellos, premios, campañas y perfiles caen en cascada.
+  const { error } = await admin.from("businesses").delete().eq("id", id);
+  if (error) {
+    console.error("[admin] business.delete", error.message);
+    return { error: `No se pudo eliminar: ${error.message}` };
+  }
+
+  for (const p of staff ?? []) {
+    const { error: authError } = await admin.auth.admin.deleteUser(p.id);
+    if (authError) console.error("[admin] auth.deleteUser", p.id, authError.message);
+  }
+  if (files && files.length > 0) {
+    await admin.storage.from("logos").remove(files.map((f) => `${id}/${f.name}`));
+  }
+
+  await writeAudit({
+    businessId: null,
+    actorId: ctx.userId,
+    action: "business.delete",
+    entityType: "business",
+    entityId: id,
+    metadata: {
+      name: business.name,
+      slug: business.slug,
+      plan: business.plan,
+      customers: customers ?? 0,
+      staff_users: staff?.length ?? 0,
+    },
+  });
+
+  // Los pases de Google Wallet de sus clientes quedan como vencidos.
+  const objectIds = (walletCards ?? []).map((c) => c.google_object_id);
+  if (objectIds.length > 0 && googleWallet.isEnabled()) {
+    after(async () => {
+      for (let i = 0; i < objectIds.length; i += 5) {
+        await Promise.allSettled(objectIds.slice(i, i + 5).map((o) => expireGoogleWalletObject(o)));
+      }
+    });
+  }
+
+  const store = await cookies();
+  if (store.get(ACTING_BUSINESS_COOKIE)?.value === id) store.delete(ACTING_BUSINESS_COOKIE);
+
+  revalidatePath("/admin", "layout");
+  redirect(`/admin/negocios?eliminado=${encodeURIComponent(business.name)}`);
 }

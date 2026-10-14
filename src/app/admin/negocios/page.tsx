@@ -23,7 +23,7 @@ interface Row {
 }
 
 export default async function BusinessesPage({ searchParams }: PageProps<"/admin/negocios">) {
-  const { elige } = await searchParams;
+  const { elige, eliminado } = await searchParams;
   const { data } = await createAdminClient()
     .from("businesses")
     .select("id, name, slug, status, plan, created_at, customers(count)")
@@ -39,6 +39,12 @@ export default async function BusinessesPage({ searchParams }: PageProps<"/admin
           <Plus /> Nuevo negocio
         </Link>
       </div>
+
+      {typeof eliminado === "string" ? (
+        <p role="status" className="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
+          Se eliminó el negocio &ldquo;{eliminado}&rdquo; con todos sus datos.
+        </p>
+      ) : null}
 
       {elige === "1" ? (
         <p className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">

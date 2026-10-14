@@ -198,3 +198,12 @@ export async function sendGoogleWalletMessage(objectId: string, header: string, 
     },
   });
 }
+
+/** Marca un pase como vencido (se muestra como inactivo en el Wallet del cliente). */
+export async function expireGoogleWalletObject(objectId: string): Promise<void> {
+  await client().request({
+    url: `${BASE_URL}/loyaltyObject/${encodeURIComponent(objectId)}`,
+    method: "PATCH",
+    data: { state: "EXPIRED" },
+  });
+}

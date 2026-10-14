@@ -1,12 +1,20 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import { TriangleAlert } from "lucide-react";
 import { BusinessFields, type BusinessDefaults } from "@/components/admin/business-fields";
 import { Field } from "@/components/admin/fields";
 import { FormStatus } from "@/components/admin/form-status";
 import { ProgramFields, type ProgramDefaults } from "@/components/admin/program-fields";
 import { Button } from "@/components/ui/button";
-import { changeUserPassword, createBusinessUser, updateBusiness, updateProgram, type AdminFormState } from "../actions";
+import {
+  changeUserPassword,
+  createBusinessUser,
+  deleteBusiness,
+  updateBusiness,
+  updateProgram,
+  type AdminFormState,
+} from "../actions";
 
 export function BusinessEditForm({ businessId, defaults }: { businessId: string; defaults: BusinessDefaults }) {
   const [state, action, pending] = useActionState<AdminFormState, FormData>(updateBusiness.bind(null, businessId), {});
@@ -87,6 +95,102 @@ export function ChangePasswordForm({ userId }: { userId: string }) {
       </Button>
       {state.error ? <span className="text-xs text-destructive">{state.error}</span> : null}
       {state.success ? <span className="text-xs text-emerald-700">{state.success}</span> : null}
+    </form>
+  );
+}
+
+export function DeleteBusinessForm({
+  businessId,
+  name,
+  slug,
+  counts,
+}: {
+  businessId: string;
+  name: string;
+  slug: string;
+  counts: { customers: number; cards: number; staff: number };
+}) {
+  const [state, action, pending] = useActionState<AdminFormState, FormData>(deleteBusiness.bind(null, businessId), {});
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState("");
+  const [understand, setUnderstand] = useState(false);
+  const ready = typed.trim() === slug && understand;
+
+  if (!open) {
+    return (
+      <Button type="button" variant="destructive" onClick={() => setOpen(true)}>
+        Eliminar negocio…
+      </Button>
+    );
+  }
+
+  return (
+    <form action={action} className="space-y-4 rounded-xl border-2 border-destructive/60 bg-destructive/5 p-4">
+      <div className="flex gap-3">
+        <TriangleAlert className="size-6 shrink-0 text-destructive" />
+        <div className="space-y-2 text-sm">
+          <p className="text-base font-semibold">¿Eliminar «{name}» para siempre?</p>
+          <p>Esto no se puede deshacer. Se borra todo lo del negocio:</p>
+          <ul className="list-disc space-y-0.5 pl-5">
+            <li>
+              <strong>{counts.customers}</strong> clientes y <strong>{counts.cards}</strong> tarjetas, con todos sus sellos y premios
+            </li>
+            <li>
+              <strong>{counts.staff}</strong> usuarios (dueño y cajeros): ya no podrán ingresar
+            </li>
+            <li>El programa, el logo, el fondo, las campañas y su enlace /n/{slug}</li>
+            <li>Las tarjetas en Google Wallet de sus clientes quedan como vencidas</li>
+          </ul>
+          <p className="text-muted-foreground">
+            Si solo quieres pausarlo, mejor cambia el <strong>Estado</strong> a «Suspendido» en Datos del negocio.
+          </p>
+        </div>
+      </div>
+      <label className="block space-y-1.5 text-sm">
+        <span>
+          Para confirmar, escribe <code className="rounded bg-muted px-1.5 py-0.5 font-mono font-semibold">{slug}</code>
+        </span>
+        <input
+          name="confirmSlug"
+          value={typed}
+          onChange={(e) => setTyped(e.target.value)}
+          autoComplete="off"
+          spellCheck={false}
+          className="h-9 w-full max-w-sm rounded-lg border border-input bg-background px-2.5 font-mono text-sm"
+        />
+      </label>
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          name="understand"
+          checked={understand}
+          onChange={(e) => setUnderstand(e.target.checked)}
+          className="mt-0.5 size-4"
+        />
+        Entiendo que se borrarán los datos de {counts.customers} clientes y que no se pueden recuperar.
+      </label>
+      <FormStatus error={state.error} />
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="submit"
+          variant="destructive"
+          disabled={!ready || pending}
+          className="bg-destructive text-white hover:bg-destructive/90"
+        >
+          {pending ? "Eliminando…" : "Eliminar definitivamente"}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setOpen(false);
+            setTyped("");
+            setUnderstand(false);
+          }}
+        >
+          Cancelar
+        </Button>
+      </div>
     </form>
   );
 }

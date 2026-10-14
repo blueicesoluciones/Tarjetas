@@ -14,7 +14,7 @@ import type { Business, Profile, Program } from "@/types/db";
 import { setUserActive } from "../actions";
 import { formatPhone } from "@/lib/domain/phone";
 import { planFeatures } from "@/lib/plans";
-import { BusinessEditForm, ChangePasswordForm, CreateUserForm, ProgramEditForm } from "./forms";
+import { BusinessEditForm, ChangePasswordForm, CreateUserForm, DeleteBusinessForm, ProgramEditForm } from "./forms";
 
 export const metadata: Metadata = { title: "Detalle del negocio" };
 
@@ -291,6 +291,20 @@ export default async function BusinessDetailPage({ params, searchParams }: PageP
             </p>
             <CreateUserForm businessId={business.id} />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-destructive/40">
+        <CardHeader>
+          <CardTitle className="text-destructive">Zona de peligro</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DeleteBusinessForm
+            businessId={business.id}
+            name={business.name}
+            slug={business.slug}
+            counts={{ customers: customers.count ?? 0, cards: cards.count ?? 0, staff: staff?.length ?? 0 }}
+          />
         </CardContent>
       </Card>
     </div>
