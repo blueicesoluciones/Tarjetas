@@ -96,9 +96,24 @@ function objectPatch(data: WalletCardData) {
       contentDescription: localized(`${data.stampsCount} de ${data.stampsRequired} sellos`),
     },
     textModulesData: [
+      ...(data.milestones.length > 0
+        ? [
+            {
+              id: "milestones",
+              header: data.milestones.some((m) => m.available) ? "¡Tienes un premio para cobrar!" : "Premios en el camino",
+              body: data.milestones
+                .map((m) => `${m.stampsAt} sellos: ${m.description}${m.available ? " (disponible)" : m.claimed ? " (cobrado)" : ""}`)
+                .join("\n"),
+            },
+          ]
+        : []),
       {
         id: "reward",
-        header: data.rewardAvailable ? "¡Premio disponible!" : "Premio",
+        header: data.rewardAvailable
+          ? "¡Premio disponible!"
+          : data.milestones.length > 0
+            ? `Premio a los ${data.stampsRequired} sellos`
+            : "Premio",
         body: data.rewardDescription,
       },
     ],

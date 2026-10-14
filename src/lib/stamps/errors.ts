@@ -19,6 +19,8 @@ const MESSAGES: Record<string, string> = {
   UNDO_WINDOW_EXPIRED: "Ya pasó el tiempo para deshacer este sello",
   UNDO_NOT_LATEST: "Solo se puede deshacer el último movimiento de la tarjeta",
   BUSINESS_REQUIRED: "Selecciona un negocio",
+  MILESTONE_NOT_FOUND: "Este premio ya no existe en el programa",
+  MILESTONE_ALREADY_CLAIMED: "Este premio ya fue entregado",
 };
 
 export interface StampError {

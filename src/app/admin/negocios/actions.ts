@@ -176,8 +176,12 @@ export async function updateBusiness(businessId: string, _prev: AdminFormState, 
   }
 
   // Cambios de marca afectan el diseño de las tarjetas en Wallet.
+  // Al cambiar de plan también pueden aparecer o desaparecer los premios intermedios.
+  const milestonesChanged = planFeatures(before.plan).milestoneRewards !== planFeatures(d.plan).milestoneRewards;
   const brandChanged =
-    dropBackground || ["name", "primary_color", "text_color"].some((k) => changed.includes(k as keyof typeof d));
+    dropBackground ||
+    milestonesChanged ||
+    ["name", "primary_color", "text_color"].some((k) => changed.includes(k as keyof typeof d));
   if (brandChanged) await bumpDesignAndSync(id);
 
   revalidatePath(`/admin/negocios/${id}`);

@@ -10,7 +10,7 @@ import { translateDbError } from "./errors";
 export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const PUBLIC_CODE_RE = /^[A-Za-z0-9_-]{12,64}$/;
 
-type RpcName = "add_stamp" | "redeem_reward" | "manual_adjust" | "undo_stamp_event" | "staff_card_summary";
+type RpcName = "add_stamp" | "redeem_reward" | "redeem_milestone" | "manual_adjust" | "undo_stamp_event" | "staff_card_summary";
 
 /**
  * Ejecuta una función Postgres con la sesión del staff (valida rol y negocio

@@ -810,6 +810,7 @@ Trabajar **una tarea a la vez**, con commit al terminar cada una. Cada fase tien
 | Avisos automáticos en Wallet («Te falta 1 sello», «Premio disponible») | ✓ | ✓ | ✓ |
 | Cajeros activos (además del dueño) | 2 | 5 | Ilimitados |
 | Fondo de tarjeta | Color sólido | Imagen | Imagen |
+| Premios intermedios en la misma tarjeta (ej. 5 sellos descuento, 10 sellos premio final; no restan sellos, se reinician al canjear el final) | — | ✓ (hasta 5) | ✓ (hasta 5) |
 | Campañas por Wallet (solo a quienes aceptaron promociones) | — | 3 al mes | Sin límite mensual |
 | Exportar clientes a CSV | — | ✓ | ✓ |
 | Panel | Información básica | Métricas detalladas | Métricas completas, gráficos y ranking |

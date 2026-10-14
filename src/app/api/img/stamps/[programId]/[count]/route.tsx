@@ -1,6 +1,8 @@
 import { ImageResponse } from "next/og";
 import { BACKGROUND_OVERLAY_ALPHA } from "@/lib/cards/card-style";
-import { stampGrid } from "@/lib/cards/stamp-layout";
+import { GIFT_ICON_PATHS, stampGrid } from "@/lib/cards/stamp-layout";
+import type { Plan } from "@/lib/plans";
+import { getProgramMilestones } from "@/lib/rewards-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const WIDTH = 1032;
@@ -19,15 +21,16 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/img/stamps/
 
   const { data: program } = await createAdminClient()
     .from("programs")
-    .select("stamps_required, businesses(primary_color, text_color, card_background_url)")
+    .select("stamps_required, businesses(primary_color, text_color, card_background_url, plan)")
     .eq("id", programId)
     .maybeSingle<{
       stamps_required: number;
-      businesses: { primary_color: string; text_color: string; card_background_url: string | null };
+      businesses: { primary_color: string; text_color: string; card_background_url: string | null; plan: Plan };
     }>();
   if (!program) return new Response("Not found", { status: 404 });
 
   const required = program.stamps_required;
+  const milestones = (await getProgramMilestones(programId, program.businesses.plan, required)).map((m) => m.stampsAt);
   const bg = program.businesses.primary_color;
   const fg = program.businesses.text_color;
   const backgroundUrl = program.businesses.card_background_url;
@@ -104,6 +107,7 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/img/stamps/
           <div key={r} style={{ display: "flex", gap }}>
             {row.map((on, i) => {
               const isLast = r * cols + i === required - 1;
+              const isMilestone = milestones.includes(r * cols + i + 1);
               return (
                 <div
                   key={i}
@@ -122,6 +126,12 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/img/stamps/
                   {on ? (
                     <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24">
                       <path d="M4 12.5l5 5L20 6.5" fill="none" stroke={bg} strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  ) : isMilestone ? (
+                    <svg width={size * 0.52} height={size * 0.52} viewBox="0 0 24 24">
+                      {GIFT_ICON_PATHS.map((d) => (
+                        <path key={d} d={d} fill="none" stroke={fg} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                      ))}
                     </svg>
                   ) : isLast ? (
                     <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24">

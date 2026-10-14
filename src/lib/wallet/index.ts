@@ -1,6 +1,9 @@
 import "server-only";
 import { appUrl } from "@/lib/env";
 import { encodeCardQr } from "@/lib/domain/qr";
+import type { Plan } from "@/lib/plans";
+import { milestoneStatuses, reachedMilestone } from "@/lib/rewards";
+import { getProgramMilestones } from "@/lib/rewards-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { appleWallet } from "./apple";
 import { googleWallet } from "./google";
@@ -33,6 +36,7 @@ interface CardRow {
   public_code: string;
   access_token: string;
   stamps_count: number;
+  claimed_milestones: number[];
   google_object_id: string | null;
   customers: { full_name: string };
   programs: {
@@ -41,18 +45,19 @@ interface CardRow {
     reward_description: string;
     design_version: number;
   };
-  businesses: { name: string; logo_url: string | null; primary_color: string; text_color: string };
+  businesses: { name: string; logo_url: string | null; primary_color: string; text_color: string; plan: Plan };
 }
 
 export async function loadWalletCardData(cardId: string): Promise<WalletCardData | null> {
   const { data } = await createAdminClient()
     .from("cards")
     .select(
-      "id, program_id, public_code, access_token, stamps_count, google_object_id, customers(full_name), programs(card_title, stamps_required, reward_description, design_version), businesses(name, logo_url, primary_color, text_color)",
+      "id, program_id, public_code, access_token, stamps_count, claimed_milestones, google_object_id, customers(full_name), programs(card_title, stamps_required, reward_description, design_version), businesses(name, logo_url, primary_color, text_color, plan)",
     )
     .eq("id", cardId)
     .maybeSingle<CardRow>();
   if (!data) return null;
+  const milestones = await getProgramMilestones(data.program_id, data.businesses.plan, data.programs.stamps_required);
 
   return {
     cardId: data.id,
@@ -65,6 +70,7 @@ export async function loadWalletCardData(cardId: string): Promise<WalletCardData
     stampsRequired: data.programs.stamps_required,
     rewardDescription: data.programs.reward_description,
     rewardAvailable: data.stamps_count >= data.programs.stamps_required,
+    milestones: milestoneStatuses(milestones, data.stamps_count, data.claimed_milestones ?? []),
     qrValue: encodeCardQr(data.public_code),
     logoUrl: logoOrFallback(data.businesses.logo_url, data.program_id),
     primaryColor: data.businesses.primary_color,
@@ -112,6 +118,8 @@ function errorMessage(err: unknown) {
 export function keyMomentMessage(before: number | null, data: WalletCardData): string | undefined {
   if (before !== null && data.stampsCount <= before) return undefined;
   if (data.rewardAvailable) return `¡Premio disponible! ${data.rewardDescription}`;
+  const reached = before !== null ? reachedMilestone(data.milestones, before, data.stampsCount) : undefined;
+  if (reached) return `¡Ganaste un premio! ${reached.description}. Pídelo en caja.`;
   if (data.stampsRequired - data.stampsCount === 1) return "¡Te falta 1 sello para tu premio!";
   return undefined;
 }

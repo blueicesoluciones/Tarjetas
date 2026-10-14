@@ -1,4 +1,4 @@
-import { stampGrid } from "@/lib/cards/stamp-layout";
+import { GIFT_ICON_PATHS, stampGrid } from "@/lib/cards/stamp-layout";
 
 /**
  * Sellos en HTML para la tarjeta web (nítidos y sobre el mismo fondo de la
@@ -9,11 +9,14 @@ export function StampGrid({
   required,
   primaryColor,
   textColor,
+  milestones = [],
 }: {
   count: number;
   required: number;
   primaryColor: string;
   textColor: string;
+  /** Sellos en los que hay premio intermedio (se marcan con un regalo). */
+  milestones?: number[];
 }) {
   const { cols } = stampGrid(required);
   return (
@@ -34,6 +37,12 @@ export function StampGrid({
             {on ? (
               <svg viewBox="0 0 24 24" className="size-[55%]" aria-hidden>
                 <path d="M4 12.5l5 5L20 6.5" fill="none" stroke={primaryColor} strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            ) : milestones.includes(i + 1) ? (
+              <svg viewBox="0 0 24 24" className="size-[52%]" aria-hidden>
+                {GIFT_ICON_PATHS.map((d) => (
+                  <path key={d} d={d} fill="none" stroke={textColor} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                ))}
               </svg>
             ) : i === required - 1 ? (
               <svg viewBox="0 0 24 24" className="size-[50%]" aria-hidden>

@@ -8,6 +8,7 @@ import { cardBackgroundStyle } from "@/lib/cards/card-style";
 import { getCardByAccessToken } from "@/lib/cards/public-card";
 import { detectDevice } from "@/lib/domain/device";
 import { encodeCardQr } from "@/lib/domain/qr";
+import { nextGoal } from "@/lib/rewards";
 import { userAgent } from "@/lib/request";
 import { appleWallet, googleWallet } from "@/lib/wallet";
 import { AutoRefresh } from "./auto-refresh";
@@ -30,7 +31,9 @@ export default async function WebCardPage({ params, searchParams }: PageProps<"/
   const { business, program } = card;
   const device = detectDevice(await userAgent());
   const rewardAvailable = card.stampsCount >= program.stampsRequired;
-  const remaining = Math.max(0, program.stampsRequired - card.stampsCount);
+  const goal = nextGoal(card.milestones, card.stampsCount, program.stampsRequired, program.rewardDescription);
+  const remaining = Math.max(0, goal.stampsAt - card.stampsCount);
+  const pendingMilestones = card.milestones.filter((m) => m.available);
 
   return (
     <div className="min-h-dvh bg-muted/50 pb-12">
@@ -66,6 +69,7 @@ export default async function WebCardPage({ params, searchParams }: PageProps<"/
             required={program.stampsRequired}
             primaryColor={business.primaryColor}
             textColor={business.textColor}
+            milestones={card.milestones.map((m) => m.stampsAt)}
           />
 
           <div className="flex items-end justify-between gap-3 px-5 pb-5">
@@ -75,7 +79,9 @@ export default async function WebCardPage({ params, searchParams }: PageProps<"/
                 <span className="text-lg opacity-70"> / {program.stampsRequired}</span>
               </p>
               <p className="text-sm opacity-80">
-                {rewardAvailable ? "¡Premio disponible! Muéstrale esta tarjeta al cajero." : `Te faltan ${remaining} para: ${program.rewardDescription}`}
+                {rewardAvailable
+                  ? "¡Premio disponible! Muéstrale esta tarjeta al cajero."
+                  : `Te ${remaining === 1 ? "falta 1" : `faltan ${remaining}`} para: ${goal.description}`}
               </p>
             </div>
           </div>
@@ -92,6 +98,34 @@ export default async function WebCardPage({ params, searchParams }: PageProps<"/
             <p className="text-lg font-bold">🎁 {program.rewardDescription}</p>
             <p className="text-sm">Pide tu premio en caja</p>
           </div>
+        ) : null}
+        {pendingMilestones.map((m) => (
+          <div key={m.stampsAt} className="rounded-2xl border-2 border-emerald-500 bg-emerald-50 p-4 text-center text-emerald-900">
+            <p className="text-lg font-bold">🎁 {m.description}</p>
+            <p className="text-sm">Ganaste este premio con {m.stampsAt} sellos. Pídelo en caja.</p>
+          </div>
+        ))}
+
+        {card.milestones.length > 0 ? (
+          <section className="rounded-2xl bg-background p-5 text-sm shadow-sm">
+            <p className="font-semibold">Premios de tu tarjeta</p>
+            <ul className="mt-2 divide-y">
+              {[...card.milestones, { stampsAt: program.stampsRequired, description: program.rewardDescription, claimed: false, available: rewardAvailable }].map((m) => (
+                <li key={m.stampsAt} className="flex items-center justify-between gap-3 py-2">
+                  <span>
+                    <strong className="tabular-nums">{m.stampsAt} sellos</strong> · {m.description}
+                  </span>
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                      m.available ? "bg-emerald-100 text-emerald-800" : m.claimed ? "bg-muted text-muted-foreground" : "text-muted-foreground"
+                    }`}
+                  >
+                    {m.available ? "Disponible" : m.claimed ? "Cobrado" : `Faltan ${m.stampsAt - card.stampsCount}`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
         ) : null}
 
         {business.status === "suspended" ? (

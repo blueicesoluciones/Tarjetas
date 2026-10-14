@@ -3,7 +3,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(27);
+select plan(34);
 
 -- Helper: actuar como un usuario autenticado
 create or replace function pg_temp.act_as(p_uid uuid) returns void language plpgsql as $$
@@ -113,6 +113,48 @@ select lives_ok($$ select public.manual_adjust('11111111-0000-0000-0000-0000000c
 select is(
   (public.manual_adjust('11111111-0000-0000-0000-0000000ca002', -5, 'corrección') ->> 'stamps_count')::int,
   0, 'ajuste manual no baja de 0'
+);
+
+-- ---------------------------------------------------------------------------
+-- Premios intermedios (Medium y Pro)
+-- ---------------------------------------------------------------------------
+reset role;
+update public.businesses set plan = 'medium' where id = '11111111-1111-1111-1111-111111111111';
+delete from public.program_rewards where program_id = '11111111-0000-0000-0000-000000000001';
+insert into public.program_rewards (business_id, program_id, stamps_at, description)
+values ('11111111-1111-1111-1111-111111111111', '11111111-0000-0000-0000-000000000001', 5, 'Descuento');
+
+select pg_temp.act_as('00000000-0000-0000-0000-00000000a002');
+select is(
+  (public.staff_card_summary('LUNACAMILA000001') -> 'milestones' -> 0 ->> 'available')::boolean,
+  true, 'premio de 5 sellos disponible con 7 sellos'
+);
+select is(
+  (public.redeem_milestone('11111111-0000-0000-0000-0000000ca001', 5) ->> 'stamps_count')::int,
+  7, 'entregar premio intermedio no resta sellos'
+);
+select throws_ok(
+  $$ select public.redeem_milestone('11111111-0000-0000-0000-0000000ca001', 5) $$,
+  'P0001', 'MILESTONE_ALREADY_CLAIMED', 'premio intermedio se entrega una vez por ciclo'
+);
+select throws_ok(
+  $$ select public.redeem_milestone('11111111-0000-0000-0000-0000000ca001', 6) $$,
+  'P0001', 'MILESTONE_NOT_FOUND', 'no se entrega un premio que no existe'
+);
+select throws_ok($$ insert into public.program_rewards (business_id, program_id, stamps_at, description)
+  values ('11111111-1111-1111-1111-111111111111', '11111111-0000-0000-0000-000000000001', 3, 'x') $$,
+  '42501', null, 'staff no escribe program_rewards directamente');
+
+reset role;
+update public.businesses set plan = 'standard' where id = '11111111-1111-1111-1111-111111111111';
+select pg_temp.act_as('00000000-0000-0000-0000-00000000a002');
+select is(
+  jsonb_array_length(public.staff_card_summary('LUNACAMILA000001') -> 'milestones'),
+  0, 'plan Standard no muestra premios intermedios'
+);
+select throws_ok(
+  $$ select public.redeem_milestone('11111111-0000-0000-0000-0000000ca002', 5) $$,
+  'P0001', 'MILESTONE_NOT_FOUND', 'plan Standard no entrega premios intermedios'
 );
 
 -- ---------------------------------------------------------------------------

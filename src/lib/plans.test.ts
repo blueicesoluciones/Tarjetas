@@ -19,6 +19,7 @@ describe("planes", () => {
     expect(minPlanFor((f) => f.backgroundImage)).toBe("medium");
     expect(minPlanFor((f) => f.winback)).toBe("pro");
     expect(minPlanFor((f) => f.csvExport)).toBe("medium");
+    expect(minPlanFor((f) => f.milestoneRewards)).toBe("medium");
   });
   it("plan desconocido cae en standard", () => {
     expect(planFeatures(undefined).label).toBe("Standard");

@@ -1,3 +1,5 @@
+import type { MilestoneStatus } from "@/lib/rewards";
+
 export interface WalletCardData {
   cardId: string;
   programId: string;
@@ -9,6 +11,8 @@ export interface WalletCardData {
   stampsRequired: number;
   rewardDescription: string;
   rewardAvailable: boolean;
+  /** Premios intermedios del ciclo actual (vacío si el plan no los incluye). */
+  milestones: MilestoneStatus[];
   qrValue: string; // "LC1:<public_code>"
   logoUrl: string;
   primaryColor: string;

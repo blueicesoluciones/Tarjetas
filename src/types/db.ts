@@ -139,6 +139,8 @@ export interface CardState {
   business_name: string;
   stamp_cooldown_minutes: number;
   undo_window_minutes: number;
+  /** Premios intermedios (vacío si el plan no los incluye). */
+  milestones: { stamps_at: number; description: string; claimed: boolean; available: boolean }[];
   event_id?: string;
   undoable_event?: { event_id: string; created_at: string } | null;
 }

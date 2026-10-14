@@ -8,6 +8,7 @@ import { detectDevice } from "@/lib/domain/device";
 import { appUrl } from "@/lib/env";
 import { userAgent } from "@/lib/request";
 import { getSavedCard } from "@/lib/customers/service";
+import { getProgramMilestones } from "@/lib/rewards-server";
 import { loadPublicBusiness } from "./data";
 import { RegisterForm } from "./register-form";
 
@@ -28,6 +29,8 @@ export default async function BusinessLandingPage({ params }: PageProps<"/n/[slu
   // mismo equipo. Si este navegador tiene una tarjeta del negocio, se ofrece
   // entrar a ella confirmando el PIN.
   const savedCard = await getSavedCard(business.id);
+  const milestones = await getProgramMilestones(program.id, business.plan, program.stamps_required);
+  const extra = milestones.length > 0 ? `. Además: ${milestones.map((m) => `a los ${m.stampsAt}, ${m.description}`).join("; ")}` : "";
 
   const device = detectDevice(await userAgent());
   const suspended = business.status === "suspended";
@@ -40,7 +43,7 @@ export default async function BusinessLandingPage({ params }: PageProps<"/n/[slu
         primaryColor={business.primary_color}
         textColor={business.text_color}
         backgroundUrl={business.card_background_url}
-        subtitle={`Junta ${program.stamps_required} sellos y obtén: ${program.reward_description}`}
+        subtitle={`Junta ${program.stamps_required} sellos y obtén: ${program.reward_description}${extra}`}
       />
       <main className="mx-auto -mt-10 max-w-md space-y-4 px-4 pb-12">
         {device.inAppBrowser ? (

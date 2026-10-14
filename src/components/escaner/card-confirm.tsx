@@ -8,6 +8,8 @@ import { vibrate } from "./feedback";
 import { useOnline } from "./offline-banner";
 
 type Flash = { kind: "success" | "error" | "reward"; text: string } | null;
+/** Premio a confirmar: el final (resta sellos) o uno intermedio (no resta). */
+type PendingRedeem = { kind: "final" } | { kind: "milestone"; stampsAt: number; description: string } | null;
 
 interface ApiResponse {
   ok: boolean;
@@ -16,9 +18,13 @@ interface ApiResponse {
   code?: string;
 }
 
-async function call(url: string, method: "GET" | "POST"): Promise<ApiResponse> {
+async function call(url: string, method: "GET" | "POST", body?: unknown): Promise<ApiResponse> {
   try {
-    const res = await fetch(url, { method, cache: "no-store" });
+    const res = await fetch(url, {
+      method,
+      cache: "no-store",
+      ...(body !== undefined ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}),
+    });
     if (res.status === 401) return { ok: false, error: "Tu sesión venció. Vuelve a ingresar." };
     return (await res.json()) as ApiResponse;
   } catch {
@@ -32,7 +38,7 @@ export function CardConfirm({ publicCode }: { publicCode: string }) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState<null | "stamp" | "redeem" | "undo">(null);
   const [flash, setFlash] = useState<Flash>(null);
-  const [confirmRedeem, setConfirmRedeem] = useState(false);
+  const [confirmRedeem, setConfirmRedeem] = useState<PendingRedeem>(null);
   const [now, setNow] = useState(() => Date.now());
 
   const load = useCallback(async () => {
@@ -68,11 +74,14 @@ export function CardConfirm({ publicCode }: { publicCode: string }) {
       const c = res.card;
       // El resumen trae el evento deshacible; add_stamp devuelve el event_id.
       setCard({ ...c, undoable_event: c.event_id ? { event_id: c.event_id, created_at: new Date().toISOString() } : null });
-      vibrate(c.reward_available ? [60, 50, 60, 50, 120] : 80);
+      const reached = c.milestones.find((m) => m.available && m.stamps_at === c.stamps_count);
+      vibrate(c.reward_available || reached ? [60, 50, 60, 50, 120] : 80);
       setFlash(
         c.reward_available
           ? { kind: "reward", text: "¡Premio disponible!" }
-          : { kind: "success", text: `${c.stamps_count} de ${c.stamps_required} sellos` },
+          : reached
+            ? { kind: "reward", text: `¡Ganó un premio! ${reached.description}` }
+            : { kind: "success", text: `${c.stamps_count} de ${c.stamps_required} sellos` },
       );
     } else {
       vibrate([80, 60, 80]);
@@ -81,16 +90,26 @@ export function CardConfirm({ publicCode }: { publicCode: string }) {
   }
 
   async function redeem() {
-    if (!card) return;
+    if (!card || !confirmRedeem) return;
+    const pending = confirmRedeem;
     setBusy("redeem");
     setFlash(null);
-    const res = await call(`/api/staff/cards/${card.card_id}/redeem`, "POST");
+    const res =
+      pending.kind === "final"
+        ? await call(`/api/staff/cards/${card.card_id}/redeem`, "POST")
+        : await call(`/api/staff/cards/${card.card_id}/redeem-milestone`, "POST", { stampsAt: pending.stampsAt });
     setBusy(null);
-    setConfirmRedeem(false);
+    setConfirmRedeem(null);
     if (res.ok && res.card) {
       setCard({ ...res.card, undoable_event: null });
       vibrate(120);
-      setFlash({ kind: "success", text: `Premio canjeado. Quedan ${res.card.stamps_count} sellos.` });
+      setFlash({
+        kind: "success",
+        text:
+          pending.kind === "final"
+            ? `Premio canjeado. Quedan ${res.card.stamps_count} sellos.`
+            : `Premio entregado: ${pending.description}. Conserva sus ${res.card.stamps_count} sellos.`,
+      });
     } else {
       vibrate([80, 60, 80]);
       setFlash({ kind: "error", text: res.error ?? "No se pudo canjear" });
@@ -136,6 +155,8 @@ export function CardConfirm({ publicCode }: { publicCode: string }) {
   const blocked = card.business_status === "suspended" || card.card_status !== "active";
 
   if (confirmRedeem) {
+    const isFinal = confirmRedeem.kind === "final";
+    const unclaimed = isFinal ? card.milestones.filter((m) => m.available) : [];
     return (
       <div className="flex flex-1 flex-col justify-center gap-6">
         <div className="rounded-3xl bg-white p-6 text-center text-neutral-900">
@@ -143,7 +164,20 @@ export function CardConfirm({ publicCode }: { publicCode: string }) {
           <p className="mt-3 text-sm text-neutral-500">Confirma que el cliente es</p>
           <p className="text-3xl font-bold">{card.customer_name}</p>
           <p className="mt-4 text-sm text-neutral-500">Premio</p>
-          <p className="text-xl font-semibold">{card.reward_description}</p>
+          <p className="text-xl font-semibold">
+            {confirmRedeem.kind === "final" ? card.reward_description : confirmRedeem.description}
+          </p>
+          <p className="mt-2 text-sm text-neutral-500">
+            {isFinal
+              ? `Se descuentan ${card.stamps_required} sellos y la tarjeta empieza de nuevo.`
+              : "No se descuentan sellos."}
+          </p>
+          {unclaimed.length > 0 ? (
+            <p className="mt-3 rounded-xl bg-amber-100 p-3 text-sm font-medium text-amber-900">
+              Aún no ha cobrado: {unclaimed.map((m) => m.description).join(", ")}. Entrégalo antes: al canjear el premio
+              final se reinician los premios de la tarjeta.
+            </p>
+          ) : null}
         </div>
         <button
           type="button"
@@ -151,9 +185,9 @@ export function CardConfirm({ publicCode }: { publicCode: string }) {
           disabled={busy !== null || !online}
           className="h-16 rounded-2xl bg-paper text-xl font-bold text-ink disabled:opacity-50"
         >
-          {busy === "redeem" ? "Canjeando…" : "Sí, canjear premio"}
+          {busy === "redeem" ? "Canjeando…" : isFinal ? "Sí, canjear premio" : "Sí, entregar premio"}
         </button>
-        <button type="button" onClick={() => setConfirmRedeem(false)} className="h-12 rounded-2xl bg-white/10 font-medium">
+        <button type="button" onClick={() => setConfirmRedeem(null)} className="h-12 rounded-2xl bg-white/10 font-medium">
           Cancelar
         </button>
       </div>
@@ -170,11 +204,33 @@ export function CardConfirm({ publicCode }: { publicCode: string }) {
             {card.stamps_count}
             <span className="text-2xl text-neutral-400"> / {card.stamps_required}</span>
           </p>
-          {card.reward_available ? (
+          {card.reward_available || card.milestones.some((m) => m.available) ? (
             <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-800">Premio disponible</span>
           ) : null}
         </div>
-        <StampDots count={card.stamps_count} required={card.stamps_required} />
+        <StampDots count={card.stamps_count} required={card.stamps_required} milestones={card.milestones.map((m) => m.stamps_at)} />
+        {card.milestones.length > 0 ? (
+          <ul className="mt-3 space-y-1 text-sm">
+            {card.milestones.map((m) => (
+              <li key={m.stamps_at} className="flex justify-between gap-2">
+                <span>
+                  <strong className="tabular-nums">{m.stamps_at}</strong> · {m.description}
+                </span>
+                <span className={m.available ? "font-semibold text-emerald-700" : "text-neutral-400"}>
+                  {m.available ? "Disponible" : m.claimed ? "Entregado" : ""}
+                </span>
+              </li>
+            ))}
+            <li className="flex justify-between gap-2">
+              <span>
+                <strong className="tabular-nums">{card.stamps_required}</strong> · {card.reward_description}
+              </span>
+              <span className={card.reward_available ? "font-semibold text-emerald-700" : "text-neutral-400"}>
+                {card.reward_available ? "Disponible" : ""}
+              </span>
+            </li>
+          </ul>
+        ) : null}
         <p className="mt-3 text-xs text-neutral-500">
           {card.last_stamp_at
             ? `Último sello: ${formatRelative(card.last_stamp_at, now)}`
@@ -209,10 +265,23 @@ export function CardConfirm({ publicCode }: { publicCode: string }) {
           >
             {busy === "stamp" ? "Sumando…" : "+1 sello"}
           </button>
+          {card.milestones
+            .filter((m) => m.available)
+            .map((m) => (
+              <button
+                key={m.stamps_at}
+                type="button"
+                onClick={() => setConfirmRedeem({ kind: "milestone", stampsAt: m.stamps_at, description: m.description })}
+                disabled={busy !== null || !online}
+                className="flex min-h-16 items-center justify-center gap-2 rounded-2xl bg-paper px-4 py-3 text-lg font-bold text-ink disabled:opacity-50"
+              >
+                <Gift className="size-6 shrink-0" /> Entregar: {m.description}
+              </button>
+            ))}
           {card.reward_available ? (
             <button
               type="button"
-              onClick={() => setConfirmRedeem(true)}
+              onClick={() => setConfirmRedeem({ kind: "final" })}
               disabled={busy !== null || !online}
               className="flex h-16 items-center justify-center gap-2 rounded-2xl bg-paper text-xl font-bold text-ink disabled:opacity-50"
             >
@@ -238,14 +307,18 @@ export function CardConfirm({ publicCode }: { publicCode: string }) {
   );
 }
 
-function StampDots({ count, required }: { count: number; required: number }) {
+function StampDots({ count, required, milestones }: { count: number; required: number; milestones: number[] }) {
   return (
     <div className="mt-4 flex flex-wrap gap-2" aria-hidden>
       {Array.from({ length: required }, (_, i) => (
         <span
           key={i}
-          className={`size-6 rounded-full border-2 ${i < count ? "border-neutral-900 bg-neutral-900" : "border-neutral-300"}`}
-        />
+          className={`flex size-6 items-center justify-center rounded-full border-2 ${
+            i < count ? "border-neutral-900 bg-neutral-900 text-white" : milestones.includes(i + 1) ? "border-emerald-500 text-emerald-600" : "border-neutral-300"
+          }`}
+        >
+          {milestones.includes(i + 1) ? <Gift className="size-3.5" /> : null}
+        </span>
       ))}
     </div>
   );

@@ -21,13 +21,15 @@ interface Props {
   logoUrl: string | null;
   backgroundUrl: string | null;
   canUseBackgroundImage: boolean;
+  /** Sellos con premio intermedio guardados (para la vista previa). */
+  milestones: number[];
   initial: ProgramFormValues;
 }
 
 const selectClass =
   "h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 
-export function ProgramForm({ programId, designVersion, logoUrl, backgroundUrl, canUseBackgroundImage, initial }: Props) {
+export function ProgramForm({ programId, designVersion, logoUrl, backgroundUrl, canUseBackgroundImage, milestones, initial }: Props) {
   const router = useRouter();
   const [state, action, pending] = useActionState<ProgramFormState, FormData>(saveProgram, {});
   const [v, setV] = useState(initial);
@@ -160,7 +162,7 @@ export function ProgramForm({ programId, designVersion, logoUrl, backgroundUrl, 
 
       <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
         <p className="text-sm font-medium">Vista previa</p>
-        <CardPreview values={v} required={required} count={count} logoUrl={logoUrl} backgroundUrl={backgroundUrl} />
+        <CardPreview values={v} required={required} count={count} logoUrl={logoUrl} backgroundUrl={backgroundUrl} milestones={milestones} />
         <div className="flex items-center gap-3 text-sm">
           <Label htmlFor="preview-count" className="shrink-0 text-muted-foreground">
             Sellos de ejemplo
@@ -263,18 +265,20 @@ function CardPreview({
   count,
   logoUrl,
   backgroundUrl,
+  milestones,
 }: {
   values: ProgramFormValues;
   required: number;
   count: number;
   logoUrl: string | null;
   backgroundUrl: string | null;
+  milestones: number[];
 }) {
   const [tab, setTab] = useState<"web" | "wallet" | "apple">("web");
   const bg = /^#[0-9A-Fa-f]{6}$/.test(values.primaryColor) ? values.primaryColor : "#0D0D0D";
   const fg = /^#[0-9A-Fa-f]{6}$/.test(values.textColor) ? values.textColor : "#FFFFFF";
   const name = values.businessName || "Tu negocio";
-  const previewProps: PreviewProps = { values, name, bg, fg, required, count, logoUrl, backgroundUrl };
+  const previewProps: PreviewProps = { values, name, bg, fg, required, count, logoUrl, backgroundUrl, milestones: milestones.filter((m) => m < required) };
 
   return (
     <div className="space-y-3">
@@ -332,9 +336,10 @@ interface PreviewProps {
   count: number;
   logoUrl: string | null;
   backgroundUrl: string | null;
+  milestones: number[];
 }
 
-function WebCardPreview({ values, name, bg, fg, required, count, logoUrl, backgroundUrl }: PreviewProps) {
+function WebCardPreview({ values, name, bg, fg, required, count, logoUrl, backgroundUrl, milestones }: PreviewProps) {
   const reward = count >= required;
   return (
     <article className="overflow-hidden rounded-3xl shadow-lg" style={{ ...cardBackgroundStyle(bg, backgroundUrl), color: fg }}>
@@ -349,7 +354,7 @@ function WebCardPreview({ values, name, bg, fg, required, count, logoUrl, backgr
         <p className="text-[9px] tracking-wide uppercase opacity-70">Cliente</p>
         <p className="text-sm font-semibold">Camila Rojas</p>
       </div>
-      <StampGrid count={count} required={required} primaryColor={bg} textColor={fg} />
+      <StampGrid count={count} required={required} primaryColor={bg} textColor={fg} milestones={milestones} />
       <div className="px-4 pb-4">
         <p className="text-xl font-bold tabular-nums">
           {count}
@@ -368,7 +373,7 @@ function WebCardPreview({ values, name, bg, fg, required, count, logoUrl, backgr
   );
 }
 
-function WalletPreview({ values, name, bg, fg, required, count, logoUrl, backgroundUrl }: PreviewProps) {
+function WalletPreview({ values, name, bg, fg, required, count, logoUrl, backgroundUrl, milestones }: PreviewProps) {
   return (
     <article className="overflow-hidden rounded-3xl shadow-lg" style={{ backgroundColor: bg, color: fg }}>
       <div className="flex items-center gap-2.5 px-4 pt-4">
@@ -406,7 +411,7 @@ function WalletPreview({ values, name, bg, fg, required, count, logoUrl, backgro
         }
       >
         <div className="absolute inset-0 flex items-center px-2">
-          <StampGrid count={count} required={required} primaryColor={bg} textColor={fg} />
+          <StampGrid count={count} required={required} primaryColor={bg} textColor={fg} milestones={milestones} />
         </div>
       </div>
     </article>
@@ -417,7 +422,7 @@ function WalletPreview({ values, name, bg, fg, required, count, logoUrl, backgro
  * Apple Wallet (pase storeCard): encabezado con logo y sellos, franja de imagen
  * (strip, 375×144) con los sellos, campos de cliente y premio, y el QR abajo.
  */
-function ApplePreview({ values, name, bg, fg, required, count, logoUrl, backgroundUrl }: PreviewProps) {
+function ApplePreview({ values, name, bg, fg, required, count, logoUrl, backgroundUrl, milestones }: PreviewProps) {
   return (
     <article className="overflow-hidden rounded-2xl shadow-lg" style={{ backgroundColor: bg, color: fg }}>
       <div className="flex items-center gap-2 px-3 pt-3 pb-2.5">
@@ -443,7 +448,7 @@ function ApplePreview({ values, name, bg, fg, required, count, logoUrl, backgrou
         }
       >
         <div className="absolute inset-0 flex items-center px-1">
-          <StampGrid count={count} required={required} primaryColor={bg} textColor={fg} />
+          <StampGrid count={count} required={required} primaryColor={bg} textColor={fg} milestones={milestones} />
         </div>
       </div>
       <div className="flex justify-between gap-3 px-3 pt-3 text-left">
