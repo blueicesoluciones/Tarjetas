@@ -6,6 +6,8 @@
 export const LEGAL = {
   company: "BlueIce Soluciones",
   email: "blueicesoluciones@gmail.com",
+  /** WhatsApp de soporte prioritario (plan Pro), en formato +57… Pendiente de definir. */
+  supportWhatsapp: null as string | null,
   country: "Colombia",
   taxId: null as string | null,
   address: null as string | null,

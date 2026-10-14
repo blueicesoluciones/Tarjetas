@@ -72,3 +72,9 @@ export function pinLockStatus(lockedUntil: string | null, lockoutCount: number, 
   if (lockedUntil && new Date(lockedUntil) > now) return "temporary" as const;
   return null;
 }
+
+/** Inicio del mes calendario actual en la zona horaria del negocio (en UTC). */
+export function startOfLocalMonth(timeZone: string, now = new Date()): Date {
+  const ymd = localDateString(now, timeZone);
+  return startOfLocalDay(`${ymd.slice(0, 7)}-01`, timeZone);
+}

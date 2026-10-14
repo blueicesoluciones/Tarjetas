@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Download, Lock } from "lucide-react";
 import { PageHeader } from "@/components/panel/page-header";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { getBusinessWithProgram } from "@/lib/auth/business";
 import { requireStaff } from "@/lib/auth/staff";
 import { formatPhone } from "@/lib/domain/phone";
 import { formatDate, pinLockStatus } from "@/lib/panel/format";
+import { planFeatures } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Clientes" };
@@ -70,7 +72,21 @@ export default async function CustomersPage({ searchParams }: PageProps<"/panel/
 
   return (
     <>
-      <PageHeader title="Clientes" description={`${total.toLocaleString("es")} ${q ? "resultados" : "clientes inscritos"}`} />
+      <PageHeader
+        title="Clientes"
+        description={`${total.toLocaleString("es")} ${q ? "resultados" : "clientes inscritos"}`}
+        action={
+          planFeatures(business?.plan).csvExport ? (
+            <a href="/panel/clientes/exportar" download className={buttonVariants({ variant: "outline" })}>
+              <Download /> Exportar a Excel
+            </a>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground" title="Disponible en el plan Medium">
+              <Lock className="size-4" /> Exportar a Excel · plan Medium
+            </span>
+          )
+        }
+      />
       <form className="mb-4 flex gap-2" role="search">
         <Input name="q" defaultValue={q} placeholder="Buscar por nombre o teléfono" className="h-10 max-w-sm" />
         <button type="submit" className={buttonVariants({ size: "lg" })}>

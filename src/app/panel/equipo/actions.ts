@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { writeAudit } from "@/lib/audit";
 import { requireStaff } from "@/lib/auth/staff";
+import { cashierLimitError } from "@/lib/plans-server";
 import { createClient } from "@/lib/supabase/server";
 
 const toggleSchema = z.object({ profileId: z.guid(), active: z.enum(["true", "false"]) });
@@ -13,6 +14,7 @@ export async function setCashierActive(formData: FormData): Promise<void> {
   const parsed = toggleSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return;
   const active = parsed.data.active === "true";
+  if (active && (await cashierLimitError(ctx.businessId!))) return;
 
   // RLS: el owner solo puede actualizar cajeros de su negocio.
   const supabase = await createClient();

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { QRCodeSVG } from "qrcode.react";
 import { StampGrid } from "@/components/customer/stamp-grid";
+import { LockedFeature } from "@/components/panel/locked-feature";
 import { cardBackgroundStyle } from "@/lib/cards/card-style";
 import { COMMON_COUNTRIES, COMMON_TIMEZONES, type ProgramFormValues } from "@/lib/panel/program-schema";
 import { saveProgram, type ProgramFormState } from "./actions";
@@ -19,13 +20,14 @@ interface Props {
   designVersion: number;
   logoUrl: string | null;
   backgroundUrl: string | null;
+  canUseBackgroundImage: boolean;
   initial: ProgramFormValues;
 }
 
 const selectClass =
   "h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 
-export function ProgramForm({ programId, designVersion, logoUrl, backgroundUrl, initial }: Props) {
+export function ProgramForm({ programId, designVersion, logoUrl, backgroundUrl, canUseBackgroundImage, initial }: Props) {
   const router = useRouter();
   const [state, action, pending] = useActionState<ProgramFormState, FormData>(saveProgram, {});
   const [v, setV] = useState(initial);
@@ -174,7 +176,15 @@ export function ProgramForm({ programId, designVersion, logoUrl, backgroundUrl, 
           />
           <span className="w-10 text-right tabular-nums">{count}</span>
         </div>
-        <BackgroundPicker backgroundUrl={backgroundUrl} />
+        {canUseBackgroundImage ? (
+          <BackgroundPicker backgroundUrl={backgroundUrl} />
+        ) : (
+          <LockedFeature
+            title="Fondo de tarjeta con imagen"
+            description="Tu plan usa fondo de color sólido (el color principal). Con una foto de fondo tu tarjeta se ve más única."
+            plan="medium"
+          />
+        )}
         <LogoUpload hasLogo={Boolean(logoUrl)} />
         <details className="text-sm">
           <summary className="cursor-pointer text-muted-foreground">Imagen guardada (Google Wallet)</summary>

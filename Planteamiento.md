@@ -802,6 +802,23 @@ Trabajar **una tarea a la vez**, con commit al terminar cada una. Cada fase tien
 13. País de operación: **Colombia**. El cliente escribe su celular de 10 dígitos (con o sin espacios, con o sin +57) y se guarda en E.164 (+57…).
 14. Marca: **stamp** (símbolo: cebra con QR). Paleta `#0D0D0D` (tinta), `#F7F6F3` (hueso), `#D9D4CA` (arena), `#C7FF3D` (lima, acento), `#6B7A6F` (salvia); tipografía **Sora**. Referencia en `docs/brand/`; logos vectoriales en `public/brand/`. Las páginas del cliente (`/n`, `/t`) usan la marca de cada negocio y solo muestran «Funciona con stamp».
 
+15. **Planes por negocio** (`businesses.plan`, lo asigna el super admin; límites en `src/lib/plans.ts`, aplicados en el servidor):
+
+| | Standard | Medium | Pro |
+|---|---|---|---|
+| Tarjeta web + Google/Apple Wallet, inscripción, programa, app del cajero, QR y afiche, restablecer PIN, ajustes, eliminar clientes | ✓ | ✓ | ✓ |
+| Avisos automáticos en Wallet («Te falta 1 sello», «Premio disponible») | ✓ | ✓ | ✓ |
+| Cajeros activos (además del dueño) | 2 | 5 | Ilimitados |
+| Fondo de tarjeta | Color sólido | Imagen | Imagen |
+| Campañas por Wallet (solo a quienes aceptaron promociones) | — | 3 al mes | Sin límite mensual |
+| Exportar clientes a CSV | — | ✓ | ✓ |
+| Panel | Información básica | Métricas detalladas | Métricas completas, gráficos y ranking |
+| «Te extrañamos» automático (cron diario) | — | — | ✓ |
+| Reporte mensual | — | — | ✓ |
+| Soporte | Correo | Correo | WhatsApp prioritario |
+
+Al bajar a un plan sin fondo con imagen, la tarjeta vuelve a color sólido.
+
 ## 19. Pendientes por definir
 
 - Dominio propio.

@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { getBusinessWithProgram } from "@/lib/auth/business";
 import { requireStaff } from "@/lib/auth/staff";
 import { formatDate } from "@/lib/panel/format";
+import { planFeatures } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 import type { Profile } from "@/types/db";
 import { setCashierActive } from "./actions";
@@ -29,6 +30,9 @@ export default async function TeamPage() {
     .order("full_name")
     .returns<Profile[]>();
   const staff = data ?? [];
+  const plan = planFeatures(business?.plan);
+  const activeCashiers = staff.filter((p) => p.role === "cashier" && p.is_active).length;
+  const atLimit = plan.maxCashiers !== null && activeCashiers >= plan.maxCashiers;
 
   return (
     <>
@@ -60,7 +64,13 @@ export default async function TeamPage() {
                           <input type="hidden" name="profileId" value={p.id} />
                           <input type="hidden" name="active" value={p.is_active ? "false" : "true"} />
                           {p.is_active ? <Badge variant="secondary">Activo</Badge> : <Badge variant="outline">Desactivado</Badge>}
-                          <Button type="submit" size="sm" variant="ghost">
+                          <Button
+                            type="submit"
+                            size="sm"
+                            variant="ghost"
+                            disabled={!p.is_active && atLimit}
+                            title={!p.is_active && atLimit ? "Llegaste al límite de cajeros de tu plan" : undefined}
+                          >
                             {p.is_active ? "Desactivar" : "Reactivar"}
                           </Button>
                         </form>
@@ -74,6 +84,18 @@ export default async function TeamPage() {
             </Table>
           </CardContent>
         </Card>
+        <p className="text-sm">
+          <span className="font-medium">
+            {activeCashiers} de {plan.maxCashiers ?? "ilimitados"} cajeros activos
+          </span>{" "}
+          <span className="text-muted-foreground">(plan {plan.label})</span>
+          {atLimit ? (
+            <span className="text-muted-foreground">
+              {" "}
+              · Llegaste al límite de tu plan: para sumar otro cajero desactiva uno o sube de plan.
+            </span>
+          ) : null}
+        </p>
         <p className="text-sm text-muted-foreground">
           Para agregar un cajero o cambiar una contraseña, pídeselo al administrador de la plataforma.
         </p>

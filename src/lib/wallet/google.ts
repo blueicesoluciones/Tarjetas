@@ -161,19 +161,25 @@ export const googleWallet: WalletProvider = {
     if (!data.googleObjectId) return; // el objeto aún no existe; se crea al pedir "Agregar"
     const id = encodeURIComponent(data.googleObjectId);
     await client().request({ url: `${BASE_URL}/loyaltyObject/${id}`, method: "PATCH", data: objectPatch(data) });
-    if (message) {
-      await client().request({
-        url: `${BASE_URL}/loyaltyObject/${id}/addMessage`,
-        method: "POST",
-        data: {
-          message: {
-            header: data.businessName,
-            body: message,
-            messageType: "TEXT_AND_NOTIFY",
-            id: `msg_${Date.now()}`,
-          },
-        },
-      });
-    }
+    if (message) await sendGoogleWalletMessage(data.googleObjectId, data.businessName, message);
   },
 };
+
+/**
+ * Mensaje con notificación en un pase de Google Wallet. Google limita cuántas
+ * notificaciones muestra por pase al día: usar solo en momentos clave o campañas.
+ */
+export async function sendGoogleWalletMessage(objectId: string, header: string, body: string): Promise<void> {
+  await client().request({
+    url: `${BASE_URL}/loyaltyObject/${encodeURIComponent(objectId)}/addMessage`,
+    method: "POST",
+    data: {
+      message: {
+        header: header.slice(0, 60),
+        body,
+        messageType: "TEXT_AND_NOTIFY",
+        id: `msg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      },
+    },
+  });
+}

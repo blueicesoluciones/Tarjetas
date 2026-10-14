@@ -4,6 +4,8 @@ import { writeAudit } from "@/lib/audit";
 import { getBusinessWithProgram } from "@/lib/auth/business";
 import { staffForApi, type StaffContext } from "@/lib/auth/staff";
 import { jsonError } from "@/lib/http/json";
+import { planFeatures } from "@/lib/plans";
+import { getBusinessPlan } from "@/lib/plans-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { syncProgramCards } from "@/lib/wallet";
 
@@ -72,6 +74,9 @@ export async function POST(request: Request) {
     return jsonError("Solicitud inválida");
   }
   if (!kind) return jsonError("Tipo de imagen inválido");
+  if (kind === "background" && !planFeatures(await getBusinessPlan(ctx.businessId)).backgroundImage) {
+    return jsonError("El fondo con imagen está disponible desde el plan Medium", 403);
+  }
   const rule = RULES[kind];
   if (!file || file.size === 0) return jsonError("Selecciona una imagen");
   const ext = rule.types[file.type];

@@ -3,7 +3,11 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/panel/page-header";
 import { getBusinessWithProgram } from "@/lib/auth/business";
 import { requireStaff } from "@/lib/auth/staff";
+import { planFeatures } from "@/lib/plans";
+import { LockedFeature } from "@/components/panel/locked-feature";
+import { defaultWinbackMessage } from "@/lib/winback";
 import { ProgramForm } from "./program-form";
+import { WinbackForm } from "./winback-form";
 
 export const metadata: Metadata = { title: "Programa" };
 
@@ -20,6 +24,7 @@ export default async function ProgramPage() {
         designVersion={program.design_version}
         logoUrl={business.logo_url}
         backgroundUrl={business.card_background_url}
+        canUseBackgroundImage={planFeatures(business.plan).backgroundImage}
         initial={{
           cardTitle: program.card_title,
           stampsRequired: program.stamps_required,
@@ -34,6 +39,20 @@ export default async function ProgramPage() {
           timezone: business.timezone,
         }}
       />
+      <div className="mt-8 max-w-3xl">
+        {planFeatures(business.plan).winback ? (
+          <WinbackForm
+            days={program.winback_days}
+            message={program.winback_message ?? defaultWinbackMessage(business.name)}
+          />
+        ) : (
+          <LockedFeature
+            title="Aviso automático «Te extrañamos»"
+            description="Recupera clientes: les llega un aviso a su Google Wallet cuando llevan varios días sin venir."
+            plan="pro"
+          />
+        )}
+      </div>
     </>
   );
 }

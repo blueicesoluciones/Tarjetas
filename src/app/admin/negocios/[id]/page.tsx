@@ -13,6 +13,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { Business, Profile, Program } from "@/types/db";
 import { setUserActive } from "../actions";
 import { formatPhone } from "@/lib/domain/phone";
+import { planFeatures } from "@/lib/plans";
 import { BusinessEditForm, ChangePasswordForm, CreateUserForm, ProgramEditForm } from "./forms";
 
 export const metadata: Metadata = { title: "Detalle del negocio" };
@@ -213,6 +214,7 @@ export default async function BusinessDetailPage({ params, searchParams }: PageP
               timezone: business.timezone,
               contact_whatsapp: business.contact_whatsapp ?? "",
               status: business.status,
+              plan: business.plan,
             }}
           />
         </CardContent>
@@ -279,6 +281,11 @@ export default async function BusinessDetailPage({ params, searchParams }: PageP
           )}
           <div>
             <h3 className="mb-1 text-sm font-semibold">Crear usuario</h3>
+            <p className="mb-1 text-xs">
+              Plan {planFeatures(business.plan).label}:{" "}
+              {(staff ?? []).filter((p) => p.role === "cashier" && p.is_active).length} de{" "}
+              {planFeatures(business.plan).maxCashiers ?? "ilimitados"} cajeros activos.
+            </p>
             <p className="mb-3 text-xs text-muted-foreground">
               Entrégale el email y la contraseña a la persona. Ingresa en /login y la app la lleva a su panel o al escáner según su rol.
             </p>

@@ -5,6 +5,7 @@
  */
 export type StaffRole = "super_admin" | "owner" | "cashier";
 export type BusinessStatus = "trial" | "active" | "suspended";
+export type BusinessPlan = "standard" | "medium" | "pro";
 export type CardStatus = "active" | "blocked";
 export type StampEventType = "stamp" | "manual_adjust" | "redeem" | "undo";
 
@@ -21,6 +22,7 @@ export interface Business {
   timezone: string;
   contact_whatsapp: string | null;
   status: BusinessStatus;
+  plan: BusinessPlan;
   created_at: string;
   updated_at: string;
 }
@@ -36,6 +38,8 @@ export interface Program {
   is_active: boolean;
   google_class_id: string | null;
   design_version: number;
+  winback_days: number | null;
+  winback_message: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -86,6 +90,7 @@ export interface Card {
   apple_auth_token: string | null;
   wallet_sync_error: string | null;
   wallet_synced_at: string | null;
+  winback_sent_at: string | null;
   updated_at: string;
   created_at: string;
 }

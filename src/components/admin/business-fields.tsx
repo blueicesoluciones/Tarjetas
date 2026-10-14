@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PLAN_ORDER, PLANS, type Plan } from "@/lib/plans";
 import { slugify } from "@/lib/admin/schemas";
 import { ColorField } from "./color-field";
 import { COUNTRY_OPTIONS, Field, SelectField, STATUS_LABELS, TIMEZONE_OPTIONS } from "./fields";
@@ -14,6 +15,7 @@ export interface BusinessDefaults {
   timezone: string;
   contact_whatsapp: string;
   status: "trial" | "active" | "suspended";
+  plan: Plan;
 }
 
 export const EMPTY_BUSINESS: BusinessDefaults = {
@@ -25,6 +27,7 @@ export const EMPTY_BUSINESS: BusinessDefaults = {
   timezone: "America/Bogota",
   contact_whatsapp: "",
   status: "trial",
+  plan: "standard",
 };
 
 /** Campos del negocio. En alta, el slug se sugiere a partir del nombre. */
@@ -77,6 +80,12 @@ export function BusinessFields({ defaults, isNew }: { defaults: BusinessDefaults
         hint="Se muestra en “Olvidé mi PIN”"
       />
       <SelectField label="Estado" name="status" defaultValue={defaults.status} options={statuses} />
+      <SelectField
+        label="Plan"
+        name="plan"
+        defaultValue={defaults.plan}
+        options={PLAN_ORDER.map((p) => ({ value: p, label: PLANS[p].label }))}
+      />
     </div>
   );
 }

@@ -21,6 +21,7 @@ export const businessFieldsSchema = z.object({
     .max(25)
     .transform((v) => (v === "" ? null : v)),
   status: z.enum(["trial", "active", "suspended"]),
+  plan: z.enum(["standard", "medium", "pro"]),
 });
 
 export const programFieldsSchema = z.object({

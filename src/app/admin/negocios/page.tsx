@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { StatusBadge } from "@/components/admin/status-badge";
+import { Badge } from "@/components/ui/badge";
+import { PLANS, type Plan } from "@/lib/plans";
 import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDate } from "@/lib/admin/format";
@@ -15,6 +17,7 @@ interface Row {
   name: string;
   slug: string;
   status: BusinessStatus;
+  plan: Plan;
   created_at: string;
   customers: { count: number }[];
 }
@@ -23,7 +26,7 @@ export default async function BusinessesPage({ searchParams }: PageProps<"/admin
   const { elige } = await searchParams;
   const { data } = await createAdminClient()
     .from("businesses")
-    .select("id, name, slug, status, created_at, customers(count)")
+    .select("id, name, slug, status, plan, created_at, customers(count)")
     .order("created_at", { ascending: false })
     .returns<Row[]>();
   const businesses = data ?? [];
@@ -53,6 +56,7 @@ export default async function BusinessesPage({ searchParams }: PageProps<"/admin
                 <TableHead>Negocio</TableHead>
                 <TableHead>Slug</TableHead>
                 <TableHead>Estado</TableHead>
+                <TableHead>Plan</TableHead>
                 <TableHead className="text-right">Clientes</TableHead>
                 <TableHead className="hidden sm:table-cell">Creado</TableHead>
               </TableRow>
@@ -68,6 +72,9 @@ export default async function BusinessesPage({ searchParams }: PageProps<"/admin
                   <TableCell className="font-mono text-xs text-muted-foreground">{b.slug}</TableCell>
                   <TableCell>
                     <StatusBadge status={b.status} />
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{PLANS[b.plan].label}</Badge>
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{b.customers[0]?.count ?? 0}</TableCell>
                   <TableCell className="hidden text-muted-foreground sm:table-cell">{formatDate(b.created_at)}</TableCell>

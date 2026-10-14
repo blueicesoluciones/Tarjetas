@@ -7,6 +7,8 @@ import { z } from "zod";
 import { businessFieldsSchema, createBusinessSchema, programFieldsSchema } from "@/lib/admin/schemas";
 import { writeAudit } from "@/lib/audit";
 import { getStaffContext } from "@/lib/auth/staff";
+import { planFeatures } from "@/lib/plans";
+import { cashierLimitError } from "@/lib/plans-server";
 import { createStaffUser, setStaffPassword, staffPasswordSchema, staffUserSchema } from "@/lib/staff-users";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureProgramEverywhere, syncProgramCards } from "@/lib/wallet";
@@ -49,6 +51,7 @@ export async function createBusiness(_prev: AdminFormState, formData: FormData):
       timezone: d.timezone,
       contact_whatsapp: d.contact_whatsapp,
       status: d.status,
+      plan: d.plan,
     })
     .select("id, name")
     .single<{ id: string; name: string }>();
@@ -145,6 +148,19 @@ export async function updateBusiness(businessId: string, _prev: AdminFormState, 
   }
 
   const changed = (Object.keys(d) as (keyof typeof d)[]).filter((k) => before[k] !== d[k]);
+  if (before.plan !== d.plan) {
+    await writeAudit({
+      businessId: id,
+      actorId: ctx.userId,
+      action: "business.plan_change",
+      entityType: "business",
+      entityId: id,
+      metadata: { from: before.plan, to: d.plan },
+    });
+  }
+  // Si el plan nuevo no incluye fondo con imagen, la tarjeta vuelve a color sólido.
+  const dropBackground = Boolean(before.card_background_url) && !planFeatures(d.plan).backgroundImage;
+  if (dropBackground) await admin.from("businesses").update({ card_background_url: null }).eq("id", id);
   if (before.status !== d.status && d.status === "suspended") {
     await writeAudit({ businessId: id, actorId: ctx.userId, action: "business.suspend", entityType: "business", entityId: id });
   }
@@ -160,7 +176,8 @@ export async function updateBusiness(businessId: string, _prev: AdminFormState, 
   }
 
   // Cambios de marca afectan el diseño de las tarjetas en Wallet.
-  const brandChanged = ["name", "primary_color", "text_color"].some((k) => changed.includes(k as keyof typeof d));
+  const brandChanged =
+    dropBackground || ["name", "primary_color", "text_color"].some((k) => changed.includes(k as keyof typeof d));
   if (brandChanged) await bumpDesignAndSync(id);
 
   revalidatePath(`/admin/negocios/${id}`);
@@ -233,6 +250,10 @@ export async function createBusinessUser(businessId: string, _prev: AdminFormSta
 
   const { data: business } = await createAdminClient().from("businesses").select("id").eq("id", id).maybeSingle();
   if (!business) return { error: "Negocio no encontrado" };
+  if (parsed.data.role === "cashier") {
+    const limit = await cashierLimitError(id);
+    if (limit) return { error: limit };
+  }
 
   const result = await createStaffUser({ ...parsed.data, businessId: id });
   if (!result.ok) return { error: result.error };
@@ -283,6 +304,14 @@ export async function setUserActive(formData: FormData): Promise<void> {
   const parsed = activeSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return;
   const active = parsed.data.active === "true";
+  if (active) {
+    const { data: target } = await createAdminClient()
+      .from("profiles")
+      .select("business_id, role")
+      .eq("id", parsed.data.userId)
+      .maybeSingle<{ business_id: string | null; role: string }>();
+    if (target?.role === "cashier" && target.business_id && (await cashierLimitError(target.business_id))) return;
+  }
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
