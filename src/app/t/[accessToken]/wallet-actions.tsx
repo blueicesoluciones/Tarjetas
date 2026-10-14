@@ -38,24 +38,17 @@ export function WalletActions({ accessToken, serverPlatform, googleEnabled, appl
   );
 
   const apple = appleEnabled ? (
-    // Estilo del distintivo «Añadir a Apple Wallet» (negro, texto oficial en español).
-    // TODO: reemplazar por el SVG oficial de Apple cuando se descargue desde la cuenta.
-    <a
-      key="apple"
-      href={`/api/apple/pass/${accessToken}`}
-      className="mx-auto flex h-[52px] w-fit items-center gap-3 rounded-xl border border-neutral-500 bg-black px-5 text-white"
-    >
-      <svg viewBox="0 0 32 24" className="h-7 w-auto" aria-hidden>
-        <rect x="1" y="1" width="30" height="22" rx="4" fill="#fff" />
-        <rect x="3" y="3" width="26" height="5" rx="1.5" fill="#34A853" />
-        <rect x="3" y="7" width="26" height="5" rx="1.5" fill="#FBBC04" />
-        <rect x="3" y="11" width="26" height="5" rx="1.5" fill="#EA4335" />
-        <path d="M1 14h9a6 6 0 0 0 12 0h9v5a4 4 0 0 1-4 4H5a4 4 0 0 1-4-4z" fill="#111" />
-      </svg>
-      <span className="text-left leading-tight">
-        <span className="block text-[11px]">Añadir a</span>
-        <span className="block text-lg font-semibold">Apple Wallet</span>
-      </span>
+    // Distintivo oficial de Apple (español México), sin modificar, según sus
+    // lineamientos: alto mínimo 30 px y espacio libre alrededor.
+    <a key="apple" href={`/api/apple/pass/${accessToken}`} className="mx-auto block w-fit p-2">
+      {/* eslint-disable-next-line @next/next/no-img-element -- recurso oficial SVG */}
+      <img
+        src="/wallet/add-to-apple-wallet-esmx.svg"
+        alt="Agregar a Apple Wallet"
+        width={111}
+        height={35}
+        className="h-[52px] w-auto max-w-full"
+      />
     </a>
   ) : (
     <div key="apple" className="rounded-2xl bg-background p-4 text-sm shadow-sm">
