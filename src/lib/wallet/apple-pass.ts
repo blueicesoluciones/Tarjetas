@@ -142,6 +142,16 @@ export async function buildApplePass(cardId: string): Promise<{ buffer: Buffer; 
     value: `${data.stampsCount}/${data.stampsRequired}`,
   });
   pass.secondaryFields.push({ key: "customer", label: "CLIENTE", value: data.customerName });
+  // Avisos del negocio (campañas, «Te extrañamos») al frente: iOS notifica de forma
+  // confiable los cambios de campos visibles. Siempre presente, porque Apple solo
+  // avisa cuando cambia el valor de un campo que ya existía en el pase.
+  pass.secondaryFields.push({
+    key: "news",
+    label: "NOVEDADES",
+    value: data.appleMessage ?? "Sin novedades",
+    textAlignment: "PKTextAlignmentRight",
+    changeMessage: "%@",
+  });
   pass.auxiliaryFields.push({ key: "status", label: "", value: appleStatusLine(data), changeMessage: "%@" });
 
   const rewards = [
@@ -150,14 +160,7 @@ export async function buildApplePass(cardId: string): Promise<{ buffer: Buffer; 
     ),
     `${data.stampsRequired} sellos: ${data.rewardDescription}${data.rewardAvailable ? " (disponible)" : ""}`,
   ];
-  // Avisos del negocio: al cambiar el texto, el iPhone lo muestra en la pantalla de bloqueo.
-  // Siempre presente: Apple solo avisa cuando cambia el valor de un campo que ya existía.
-  pass.backFields.push({
-    key: "news",
-    label: "Novedades",
-    value: data.appleMessage ?? `Aquí verás las novedades de ${data.businessName}.`,
-    changeMessage: "%@",
-  });
+  if (data.appleMessage) pass.backFields.push({ key: "news_full", label: "Novedades", value: data.appleMessage });
   pass.backFields.push(
     { key: "rewards", label: "Premios", value: rewards.join("\n") },
     { key: "web", label: "Tu tarjeta web", value: data.webCardUrl },
