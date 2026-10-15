@@ -99,7 +99,7 @@ export function appleStatusLine(data: WalletCardData): string {
   const pending = data.milestones.find((m) => m.available);
   if (pending) return `¡Ganaste un premio! ${pending.description}`;
   if (data.stampsRequired - data.stampsCount === 1) return "¡Te falta 1 sello para tu premio!";
-  return "Muestra el código en caja para sumar sellos";
+  return "Muestra este código en caja para sumar sellos";
 }
 
 /** Genera el .pkpass firmado de una tarjeta. */
