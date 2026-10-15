@@ -10,7 +10,8 @@ import { formatDate } from "@/lib/panel/format";
 import { planFeatures } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 import type { Profile } from "@/types/db";
-import { setCashierActive } from "./actions";
+import { DeleteCashierButton } from "@/components/staff/delete-cashier-button";
+import { deleteCashier, setCashierActive } from "./actions";
 
 export const metadata: Metadata = { title: "Equipo" };
 
@@ -54,26 +55,44 @@ export default async function TeamPage() {
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">
                       {p.full_name}
-                      {p.id === ctx.userId ? <span className="ml-1 text-muted-foreground">(tú)</span> : null}
+                      {p.id === ctx.userId ? <span className="text-muted-foreground ml-1">(tú)</span> : null}
                     </TableCell>
                     <TableCell>{ROLE_LABEL[p.role]}</TableCell>
-                    <TableCell className="text-muted-foreground">{formatDate(p.created_at, timeZone)}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDate(p.created_at, timeZone)}
+                    </TableCell>
                     <TableCell className="text-right">
                       {p.role === "cashier" ? (
-                        <form action={setCashierActive} className="inline-flex items-center gap-2">
-                          <input type="hidden" name="profileId" value={p.id} />
-                          <input type="hidden" name="active" value={p.is_active ? "false" : "true"} />
-                          {p.is_active ? <Badge variant="secondary">Activo</Badge> : <Badge variant="outline">Desactivado</Badge>}
-                          <Button
-                            type="submit"
-                            size="sm"
-                            variant="ghost"
-                            disabled={!p.is_active && atLimit}
-                            title={!p.is_active && atLimit ? "Llegaste al límite de cajeros de tu plan" : undefined}
-                          >
-                            {p.is_active ? "Desactivar" : "Reactivar"}
-                          </Button>
-                        </form>
+                        <div className="inline-flex items-center gap-1">
+                          <form action={setCashierActive} className="inline-flex items-center gap-2">
+                            <input type="hidden" name="profileId" value={p.id} />
+                            <input type="hidden" name="active" value={p.is_active ? "false" : "true"} />
+                            {p.is_active ? (
+                              <Badge variant="secondary">Activo</Badge>
+                            ) : (
+                              <Badge variant="outline">Desactivado</Badge>
+                            )}
+                            <Button
+                              type="submit"
+                              size="sm"
+                              variant="ghost"
+                              disabled={!p.is_active && atLimit}
+                              title={
+                                !p.is_active && atLimit
+                                  ? "Llegaste al límite de cajeros de tu plan"
+                                  : undefined
+                              }
+                            >
+                              {p.is_active ? "Desactivar" : "Reactivar"}
+                            </Button>
+                          </form>
+                          <DeleteCashierButton
+                            action={deleteCashier}
+                            fieldName="profileId"
+                            profileId={p.id}
+                            name={p.full_name}
+                          />
+                        </div>
                       ) : (
                         <Badge variant="secondary">Activo</Badge>
                       )}
@@ -96,7 +115,7 @@ export default async function TeamPage() {
             </span>
           ) : null}
         </p>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Para agregar un cajero o cambiar una contraseña, pídeselo al administrador de la plataforma.
         </p>
       </div>

@@ -11,7 +11,8 @@ import { startImpersonation } from "@/app/actions/impersonation";
 import { formatDate } from "@/lib/admin/format";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Business, Profile, Program } from "@/types/db";
-import { setUserActive } from "../actions";
+import { DeleteCashierButton } from "@/components/staff/delete-cashier-button";
+import { deleteBusinessCashier, setUserActive } from "../actions";
 import { formatPhone } from "@/lib/domain/phone";
 import { planFeatures } from "@/lib/plans";
 import { BusinessEditForm, ChangePasswordForm, CreateUserForm, DeleteBusinessForm, ProgramEditForm } from "./forms";
@@ -274,6 +275,9 @@ export default async function BusinessDetailPage({ params, searchParams }: PageP
                       </Button>
                     </form>
                     {!p.is_active ? <Badge className="bg-muted text-muted-foreground">Inactivo</Badge> : null}
+                    {p.role === "cashier" ? (
+                      <DeleteCashierButton action={deleteBusinessCashier} fieldName="userId" profileId={p.id} name={p.full_name} />
+                    ) : null}
                   </div>
                 </li>
               ))}

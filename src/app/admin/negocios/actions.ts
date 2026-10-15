@@ -10,7 +10,7 @@ import { writeAudit } from "@/lib/audit";
 import { ACTING_BUSINESS_COOKIE, getStaffContext } from "@/lib/auth/staff";
 import { planFeatures } from "@/lib/plans";
 import { cashierLimitError } from "@/lib/plans-server";
-import { createStaffUser, setStaffPassword, staffPasswordSchema, staffUserSchema } from "@/lib/staff-users";
+import { createStaffUser, deleteCashierUser, setStaffPassword, staffPasswordSchema, staffUserSchema } from "@/lib/staff-users";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureProgramEverywhere, googleWallet, syncProgramCards } from "@/lib/wallet";
 import { expireGoogleWalletObject } from "@/lib/wallet/google";
@@ -406,4 +406,21 @@ export async function deleteBusiness(businessId: string, _prev: AdminFormState, 
 
   revalidatePath("/admin", "layout");
   redirect(`/admin/negocios?eliminado=${encodeURIComponent(business.name)}`);
+}
+
+export async function deleteBusinessCashier(formData: FormData): Promise<void> {
+  const ctx = await requireSuperAdmin();
+  const parsed = z.object({ userId: z.guid() }).safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const result = await deleteCashierUser(parsed.data.userId);
+  if (!result.ok) return;
+  await writeAudit({
+    businessId: result.businessId,
+    actorId: ctx.userId,
+    action: "staff.delete",
+    entityType: "profile",
+    entityId: parsed.data.userId,
+    metadata: { full_name: result.fullName },
+  });
+  revalidatePath(`/admin/negocios/${result.businessId}`);
 }

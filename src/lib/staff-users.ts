@@ -50,3 +50,28 @@ export async function setStaffPassword(userId: string, password: string): Promis
   const { error } = await createAdminClient().auth.admin.updateUserById(userId, { password });
   return error ? error.message : null;
 }
+
+/**
+ * Elimina un cajero (su usuario de acceso y su perfil). Su historial de sellos se
+ * conserva sin nombre. Con `businessId` solo elimina cajeros de ese negocio.
+ */
+export async function deleteCashierUser(
+  profileId: string,
+  businessId?: string,
+): Promise<{ ok: true; businessId: string; fullName: string } | { ok: false; error: string }> {
+  const admin = createAdminClient();
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("id, role, business_id, full_name")
+    .eq("id", profileId)
+    .maybeSingle<{ id: string; role: StaffRole; business_id: string | null; full_name: string }>();
+  if (!profile || profile.role !== "cashier" || !profile.business_id) return { ok: false, error: "Cajero no encontrado" };
+  if (businessId && profile.business_id !== businessId) return { ok: false, error: "Cajero no encontrado" };
+
+  const { error } = await admin.auth.admin.deleteUser(profileId);
+  if (error) {
+    console.error("[staff] deleteUser", error.message);
+    return { ok: false, error: "No se pudo eliminar el cajero" };
+  }
+  return { ok: true, businessId: profile.business_id, fullName: profile.full_name };
+}
