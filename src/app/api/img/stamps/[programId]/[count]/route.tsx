@@ -5,15 +5,17 @@ import type { Plan } from "@/lib/plans";
 import { getProgramMilestones } from "@/lib/rewards-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const WIDTH = 1032;
-const HEIGHT = 336;
+// Google Wallet (hero): 1032×336. Apple Wallet (strip de storeCard): 375×144 pt,
+// generada a @3x (1125×432) para que iOS no la recorte por los lados.
+const SIZES = { google: { width: 1032, height: 336 }, apple: { width: 1125, height: 432 } } as const;
 
 /**
  * Imagen de sellos: hero de Google Wallet y strip de Apple (CLAUDE.md §10.1).
  * La URL cambia con el conteo y design_version, así que se cachea inmutable.
  */
-export async function GET(_request: Request, ctx: RouteContext<"/api/img/stamps/[programId]/[count]">) {
+export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[programId]/[count]">) {
   const { programId, count: countParam } = await ctx.params;
+  const { width: WIDTH, height: HEIGHT } = SIZES[new URL(request.url).searchParams.get("f") === "apple" ? "apple" : "google"];
   const count = Number(countParam);
   if (!/^[0-9a-f-]{36}$/i.test(programId) || !Number.isInteger(count) || count < 0 || count > 1000) {
     return new Response("Not found", { status: 404 });
@@ -39,11 +41,12 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/img/stamps/
   const { rows, cols } = stampGrid(required);
 
   const padding = 40;
+  const sidePadding = 64; // margen lateral amplio: ningún sello queda pegado al borde
   const gap = rows === 1 ? 18 : 14;
   const bannerHeight = reward ? 56 : 0;
   const size = Math.floor(
     Math.min(
-      (WIDTH - padding * 2 - gap * (cols - 1)) / cols,
+      (WIDTH - sidePadding * 2 - gap * (cols - 1)) / cols,
       (HEIGHT - padding * 2 - bannerHeight - gap * (rows - 1)) / rows,
     ),
   );

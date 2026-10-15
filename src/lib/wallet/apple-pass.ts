@@ -5,6 +5,7 @@ import sharp from "sharp";
 import { nanoid } from "nanoid";
 import { appUrl } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { nextGoal } from "@/lib/rewards";
 import { appleConfig } from "./apple-config";
 import { loadWalletCardData } from "./index";
 import type { WalletCardData } from "./types";
@@ -71,7 +72,7 @@ async function fetchImage(url: string): Promise<Buffer> {
 
 /** Imágenes del pase (Apple solo acepta PNG) en @1x, @2x y @3x. */
 async function passImages(data: WalletCardData): Promise<Record<string, Buffer>> {
-  const [logo, strip] = await Promise.all([fetchImage(data.logoUrl), fetchImage(data.stampsImageUrl)]);
+  const [logo, strip] = await Promise.all([fetchImage(data.logoUrl), fetchImage(`${data.stampsImageUrl}&f=apple`)]);
   const out: Record<string, Buffer> = {};
   const scales = [
     ["", 1],
@@ -85,7 +86,7 @@ async function passImages(data: WalletCardData): Promise<Record<string, Buffer>>
       .flatten({ background: data.primaryColor })
       .png()
       .toBuffer();
-    out[`strip${suffix}.png`] = await sharp(strip).resize({ width: 375 * s, height: 123 * s, fit: "cover" }).png().toBuffer();
+    out[`strip${suffix}.png`] = await sharp(strip).resize({ width: 375 * s, height: 144 * s, fit: "cover" }).png().toBuffer();
   }
   return out;
 }
@@ -100,6 +101,16 @@ export function appleStatusLine(data: WalletCardData): string {
   if (pending) return `¡Ganaste un premio! ${pending.description}`;
   if (data.stampsRequired - data.stampsCount === 1) return "¡Te falta 1 sello para tu premio!";
   return "Muestra este código en caja para sumar sellos";
+}
+
+/** Texto del frente: el próximo premio y cuántos sellos faltan. */
+export function nextRewardLine(data: WalletCardData): string {
+  if (data.rewardAvailable) return `¡Listo! ${data.rewardDescription}`;
+  const pending = data.milestones.find((m) => m.available);
+  if (pending) return `¡Listo! ${pending.description}`;
+  const goal = nextGoal(data.milestones, data.stampsCount, data.stampsRequired, data.rewardDescription);
+  const left = goal.stampsAt - data.stampsCount;
+  return `${goal.description} · ${left === 1 ? "falta 1" : `faltan ${left}`}`;
 }
 
 /** Genera el .pkpass firmado de una tarjeta. */
@@ -142,15 +153,12 @@ export async function buildApplePass(cardId: string): Promise<{ buffer: Buffer; 
     value: `${data.stampsCount}/${data.stampsRequired}`,
   });
   pass.secondaryFields.push({ key: "customer", label: "CLIENTE", value: data.customerName });
-  // Avisos del negocio (campañas, «Te extrañamos») al frente: iOS notifica de forma
-  // confiable los cambios de campos visibles. Siempre presente, porque Apple solo
-  // avisa cuando cambia el valor de un campo que ya existía en el pase.
+  // Frente: el próximo premio y cuánto falta. Sin changeMessage para no avisar en cada sello.
   pass.secondaryFields.push({
-    key: "news",
-    label: "NOVEDADES",
-    value: data.appleMessage ?? "Sin novedades",
+    key: "next",
+    label: "PRÓXIMO PREMIO",
+    value: nextRewardLine(data),
     textAlignment: "PKTextAlignmentRight",
-    changeMessage: "%@",
   });
 
   const rewards = [
@@ -159,10 +167,13 @@ export async function buildApplePass(cardId: string): Promise<{ buffer: Buffer; 
     ),
     `${data.stampsRequired} sellos: ${data.rewardDescription}${data.rewardAvailable ? " (disponible)" : ""}`,
   ];
-  // Momentos clave (falta 1 sello, premio disponible) atrás: el frente queda solo
-  // con el cliente y las novedades. Al cambiar, el iPhone igual envía el aviso.
-  pass.backFields.push({ key: "status", label: "Tu tarjeta", value: appleStatusLine(data), changeMessage: "%@" });
-  if (data.appleMessage) pass.backFields.push({ key: "news_full", label: "Novedades", value: data.appleMessage });
+  // Avisos con notificación (changeMessage). Van atrás, como lo hacen Airship y PassKit:
+  // iOS notifica cuando cambia el valor de un campo con changeMessage, esté al frente
+  // o atrás. Ambos campos existen siempre, porque Apple no avisa por un campo nuevo.
+  pass.backFields.push(
+    { key: "news", label: "Novedades", value: data.appleMessage ?? "Sin novedades", changeMessage: "%@" },
+    { key: "status", label: "Tu tarjeta", value: appleStatusLine(data), changeMessage: "%@" },
+  );
   pass.backFields.push(
     { key: "rewards", label: "Premios", value: rewards.join("\n") },
     { key: "web", label: "Tu tarjeta web", value: data.webCardUrl },

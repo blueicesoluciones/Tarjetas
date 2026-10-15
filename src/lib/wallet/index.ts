@@ -19,10 +19,11 @@ function enabledProviders() {
  * Versión del dibujo de la imagen de sellos. Subirla cuando cambie el diseño de
  * /api/img/stamps para que Google descargue la imagen nueva (la cachea por URL).
  */
-const STAMPS_IMAGE_RENDER = 2;
+const STAMPS_IMAGE_RENDER = 3;
 
-export function stampsImageUrl(programId: string, count: number, designVersion: number) {
-  return appUrl(`/api/img/stamps/${programId}/${count}?v=${designVersion}-r${STAMPS_IMAGE_RENDER}`);
+export function stampsImageUrl(programId: string, count: number, designVersion: number, format: "google" | "apple" = "google") {
+  const f = format === "apple" ? "&f=apple" : "";
+  return appUrl(`/api/img/stamps/${programId}/${count}?v=${designVersion}-r${STAMPS_IMAGE_RENDER}${f}`);
 }
 
 /** Google exige un logo: si el negocio no subió uno, se genera con su inicial. */

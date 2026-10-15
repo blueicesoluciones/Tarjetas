@@ -40,6 +40,16 @@ export async function campaignsThisMonth(businessId: string, timeZone: string): 
   return count ?? 0;
 }
 
+/**
+ * El iPhone solo avisa si el texto cambia. Si se repite el mismo mensaje (ej. «Te
+ * extrañamos» cada mes), se alterna un espacio invisible al final para que cuente
+ * como cambio sin que se note.
+ */
+export function appleMessageValue(message: string, previous: string | null): string {
+  const base = message.slice(0, 399);
+  return previous === base ? `${base}\u200B` : base;
+}
+
 /** Envía el aviso a un pase. Apple: se guarda en la tarjeta y se avisa al iPhone. */
 async function deliverOne(target: WalletTarget, header: string, body: string): Promise<boolean> {
   const tasks: Promise<unknown>[] = [];
@@ -47,10 +57,9 @@ async function deliverOne(target: WalletTarget, header: string, body: string): P
   if (target.appleSerial && appleWallet.isEnabled()) {
     tasks.push(
       (async () => {
-        await createAdminClient()
-          .from("cards")
-          .update({ apple_message: `${header}: ${body}`.slice(0, 400) })
-          .eq("id", target.cardId);
+        const admin = createAdminClient();
+        const { data: card } = await admin.from("cards").select("apple_message").eq("id", target.cardId).maybeSingle<{ apple_message: string | null }>();
+        await admin.from("cards").update({ apple_message: appleMessageValue(`${header}: ${body}`, card?.apple_message ?? null) }).eq("id", target.cardId);
         await pushPassUpdate(target.appleSerial!);
       })(),
     );
