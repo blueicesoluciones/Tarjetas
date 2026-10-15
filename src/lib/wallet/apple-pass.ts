@@ -99,7 +99,7 @@ export function appleStatusLine(data: WalletCardData): string {
   const pending = data.milestones.find((m) => m.available);
   if (pending) return `¡Ganaste un premio! ${pending.description}`;
   if (data.stampsRequired - data.stampsCount === 1) return "¡Te falta 1 sello para tu premio!";
-  return "Muestra este código en caja para sumar sellos";
+  return "Muestra el código en caja para sumar sellos";
 }
 
 /** Genera el .pkpass firmado de una tarjeta. */
@@ -152,7 +152,6 @@ export async function buildApplePass(cardId: string): Promise<{ buffer: Buffer; 
     textAlignment: "PKTextAlignmentRight",
     changeMessage: "%@",
   });
-  pass.auxiliaryFields.push({ key: "status", label: "", value: appleStatusLine(data), changeMessage: "%@" });
 
   const rewards = [
     ...data.milestones.map(
@@ -160,6 +159,9 @@ export async function buildApplePass(cardId: string): Promise<{ buffer: Buffer; 
     ),
     `${data.stampsRequired} sellos: ${data.rewardDescription}${data.rewardAvailable ? " (disponible)" : ""}`,
   ];
+  // Momentos clave (falta 1 sello, premio disponible) atrás: el frente queda solo
+  // con el cliente y las novedades. Al cambiar, el iPhone igual envía el aviso.
+  pass.backFields.push({ key: "status", label: "Tu tarjeta", value: appleStatusLine(data), changeMessage: "%@" });
   if (data.appleMessage) pass.backFields.push({ key: "news_full", label: "Novedades", value: data.appleMessage });
   pass.backFields.push(
     { key: "rewards", label: "Premios", value: rewards.join("\n") },
