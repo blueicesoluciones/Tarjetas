@@ -15,9 +15,16 @@ import { DeleteCashierButton } from "@/components/staff/delete-cashier-button";
 import { deleteBusinessCashier, setUserActive } from "../actions";
 import { formatPhone } from "@/lib/domain/phone";
 import { planFeatures } from "@/lib/plans";
+import { appleConfig } from "@/lib/wallet/apple-config";
+import { suggestedPassTypeId } from "@/lib/wallet/apple-certs";
+import { ApplePassForm, type ApplePassInfo } from "./apple-pass-form";
 import { BusinessEditForm, ChangePasswordForm, CreateUserForm, DeleteBusinessForm, ProgramEditForm } from "./forms";
 
 export const metadata: Metadata = { title: "Detalle del negocio" };
+
+function daysUntil(iso: string) {
+  return Math.floor((Date.parse(iso) - Date.now()) / 86_400_000);
+}
 
 const ROLE_LABELS = { super_admin: "Super admin", owner: "Dueño", cashier: "Cajero" } as const;
 
@@ -39,14 +46,28 @@ export default async function BusinessDetailPage({ params, searchParams }: PageP
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const admin = createAdminClient();
 
-  const [{ data: business }, { data: program }, { data: staff }, customers, cards, syncErrors] = await Promise.all([
+  const [{ data: business }, { data: program }, { data: staff }, customers, cards, syncErrors, { data: applePass }] = await Promise.all([
     admin.from("businesses").select("*").eq("id", id).maybeSingle<Business>(),
     admin.from("programs").select("*").eq("business_id", id).eq("is_active", true).maybeSingle<Program>(),
     admin.from("profiles").select("*").eq("business_id", id).order("created_at").returns<Profile[]>(),
     admin.from("customers").select("id", { count: "exact", head: true }).eq("business_id", id).is("deleted_at", null),
     admin.from("cards").select("id", { count: "exact", head: true }).eq("business_id", id),
     admin.from("cards").select("id", { count: "exact", head: true }).eq("business_id", id).not("wallet_sync_error", "is", null),
+    admin
+      .from("business_apple_pass_types")
+      .select("pass_type_id, csr_pem, cert_expires_at")
+      .eq("business_id", id)
+      .maybeSingle<{ pass_type_id: string; csr_pem: string; cert_expires_at: string | null }>(),
   ]);
+  const apple = appleConfig();
+  const applePassInfo: ApplePassInfo | null = applePass
+    ? {
+        passTypeId: applePass.pass_type_id,
+        csrPem: applePass.csr_pem,
+        expiresAt: applePass.cert_expires_at,
+        daysLeft: applePass.cert_expires_at ? daysUntil(applePass.cert_expires_at) : null,
+      }
+    : null;
   if (!business) notFound();
 
   let customerQuery = admin
@@ -248,6 +269,22 @@ export default async function BusinessDetailPage({ params, searchParams }: PageP
           )}
         </CardContent>
       </Card>
+
+      {apple ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Apple Wallet</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ApplePassForm
+              businessId={business.id}
+              slug={business.slug}
+              suggested={suggestedPassTypeId(apple.passTypeId, business.slug)}
+              info={applePassInfo}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

@@ -3,7 +3,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(34);
+select plan(35);
 
 -- Helper: actuar como un usuario autenticado
 create or replace function pg_temp.act_as(p_uid uuid) returns void language plpgsql as $$
@@ -63,6 +63,10 @@ select throws_ok(
 select throws_ok(
   $$ update public.cards set stamps_count = 99 $$,
   '42501', null, 'no se escribe cards directamente'
+);
+select throws_ok(
+  $$ select key_encrypted from public.business_apple_pass_types limit 1 $$,
+  '42501', null, 'las claves de Apple solo las lee el servidor'
 );
 
 -- Update del negocio B no afecta filas

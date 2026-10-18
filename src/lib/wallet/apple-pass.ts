@@ -7,6 +7,7 @@ import { appUrl } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { nextGoal } from "@/lib/rewards";
 import { appleConfig } from "./apple-config";
+import { businessPassTypeId, signerFor } from "./apple-pass-types";
 import { loadWalletCardData } from "./index";
 import type { WalletCardData } from "./types";
 
@@ -113,25 +114,49 @@ export function nextRewardLine(data: WalletCardData): string {
   return `${goal.description} · ${left === 1 ? "falta 1" : `faltan ${left}`}`;
 }
 
-/** Genera el .pkpass firmado de una tarjeta. */
-export async function buildApplePass(cardId: string): Promise<{ buffer: Buffer; ref: AppleCardRef } | null> {
+/** ¿El iPhone ya registró el pase con este identificador? */
+async function hasRegistration(passTypeId: string, serialNumber: string): Promise<boolean> {
+  const { count } = await createAdminClient()
+    .from("apple_device_registrations")
+    .select("id", { count: "exact", head: true })
+    .eq("pass_type_identifier", passTypeId)
+    .eq("serial_number", serialNumber);
+  return (count ?? 0) > 0;
+}
+
+/**
+ * Genera el .pkpass firmado de una tarjeta. Sin `passTypeId` usa el identificador
+ * actual del negocio; con él (Web Service) actualiza un pase ya guardado, que puede
+ * ser uno anterior con el identificador compartido.
+ */
+export async function buildApplePass(cardId: string, passTypeId?: string): Promise<{ buffer: Buffer; ref: AppleCardRef } | null> {
   const config = appleConfig();
   if (!config) return null;
   const ref = await ensureAppleIdentity(cardId);
   const data = await loadWalletCardData(cardId);
   if (!ref || !data) return null;
+  const current = await businessPassTypeId(data.businessId);
+  if (!current) return null;
+  const signer = await signerFor(passTypeId ?? current, data.businessId);
+  if (!signer) return null;
+
+  // Pase anterior a que el negocio tuviera identificador propio: avisa que hay una
+  // tarjeta nueva y, cuando el cliente ya la guardó, queda anulado (gris).
+  const legacy = signer.passTypeId !== current;
+  const replaced = legacy && (await hasRegistration(current, ref.serialNumber));
+  const addUrl = data.webCardUrl.replace("/t/", "/api/apple/pass/");
 
   const pass = new PKPass(
     await passImages(data),
     {
       wwdr: config.wwdr,
-      signerCert: config.signerCert,
-      signerKey: config.signerKey,
-      signerKeyPassphrase: config.signerKeyPassphrase,
+      signerCert: signer.signerCert,
+      signerKey: signer.signerKey,
+      signerKeyPassphrase: signer.signerKeyPassphrase,
     },
     {
       formatVersion: 1,
-      passTypeIdentifier: config.passTypeId,
+      passTypeIdentifier: signer.passTypeId,
       teamIdentifier: config.teamId,
       serialNumber: ref.serialNumber,
       authenticationToken: ref.authToken,
@@ -143,6 +168,7 @@ export async function buildApplePass(cardId: string): Promise<{ buffer: Buffer; 
       foregroundColor: rgb(data.textColor),
       labelColor: rgb(data.textColor),
       sharingProhibited: true,
+      ...(replaced ? { voided: true } : {}),
     },
   );
   pass.type = "storeCard";
@@ -171,9 +197,26 @@ export async function buildApplePass(cardId: string): Promise<{ buffer: Buffer; 
   // iOS notifica cuando cambia el valor de un campo con changeMessage, esté al frente
   // o atrás. Ambos campos existen siempre, porque Apple no avisa por un campo nuevo.
   pass.backFields.push(
-    { key: "news", label: "Novedades", value: data.appleMessage ?? "Sin novedades", changeMessage: "%@" },
+    {
+      key: "news",
+      label: "Novedades",
+      value: legacy
+        ? replaced
+          ? `Ya guardaste la tarjeta nueva de ${data.businessName}. Puedes eliminar esta.`
+          : `${data.businessName} tiene una tarjeta nueva. Toca «Agregar tarjeta nueva» aquí abajo y guárdala; tus sellos siguen iguales.`
+        : (data.appleMessage ?? "Sin novedades"),
+      changeMessage: "%@",
+    },
     { key: "status", label: "Tu tarjeta", value: appleStatusLine(data), changeMessage: "%@" },
   );
+  if (legacy && !replaced) {
+    pass.backFields.push({
+      key: "upgrade",
+      label: "Agregar tarjeta nueva",
+      value: addUrl,
+      attributedValue: `<a href="${addUrl}">Toca aquí para agregarla</a>`,
+    });
+  }
   pass.backFields.push(
     { key: "rewards", label: "Premios", value: rewards.join("\n") },
     { key: "web", label: "Tu tarjeta web", value: data.webCardUrl },

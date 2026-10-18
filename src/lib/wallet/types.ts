@@ -2,6 +2,7 @@ import type { MilestoneStatus } from "@/lib/rewards";
 
 export interface WalletCardData {
   cardId: string;
+  businessId: string;
   programId: string;
   businessName: string;
   cardTitle: string;

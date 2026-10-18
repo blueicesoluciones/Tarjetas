@@ -33,6 +33,7 @@ function logoOrFallback(logoUrl: string | null, programId: string) {
 
 interface CardRow {
   id: string;
+  business_id: string;
   program_id: string;
   public_code: string;
   access_token: string;
@@ -55,7 +56,7 @@ export async function loadWalletCardData(cardId: string): Promise<WalletCardData
   const { data } = await createAdminClient()
     .from("cards")
     .select(
-      "id, program_id, public_code, access_token, stamps_count, claimed_milestones, google_object_id, apple_serial_number, apple_message, customers(full_name), programs(card_title, stamps_required, reward_description, design_version), businesses(name, logo_url, primary_color, text_color, plan)",
+      "id, business_id, program_id, public_code, access_token, stamps_count, claimed_milestones, google_object_id, apple_serial_number, apple_message, customers(full_name), programs(card_title, stamps_required, reward_description, design_version), businesses(name, logo_url, primary_color, text_color, plan)",
     )
     .eq("id", cardId)
     .maybeSingle<CardRow>();
@@ -64,6 +65,7 @@ export async function loadWalletCardData(cardId: string): Promise<WalletCardData
 
   return {
     cardId: data.id,
+    businessId: data.business_id,
     programId: data.program_id,
     businessName: data.businesses.name,
     cardTitle: data.programs.card_title,

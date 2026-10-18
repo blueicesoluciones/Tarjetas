@@ -1,6 +1,9 @@
+import { after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { syncCardEverywhere } from "@/lib/wallet";
 import { appleConfig } from "@/lib/wallet/apple-config";
 import { buildApplePass, findAppleCard } from "@/lib/wallet/apple-pass";
+import { isKnownPassType } from "@/lib/wallet/apple-pass-types";
 
 /**
  * Web Service de Apple Wallet (CLAUDE.md §12):
@@ -9,6 +12,7 @@ import { buildApplePass, findAppleCard } from "@/lib/wallet/apple-pass";
  * - GET    devices/{device}/registrations/{passTypeId}?passesUpdatedSince=  seriales cambiados
  * - GET    passes/{passTypeId}/{serial}                            pase actualizado
  * - POST   log                                                     errores del dispositivo
+ * {passTypeId} es el compartido o el propio de un negocio.
  */
 type Ctx = RouteContext<"/api/apple/v1/[...path]">;
 
@@ -17,15 +21,17 @@ const SAFE = /^[A-Za-z0-9._-]{1,200}$/;
 
 async function parse(ctx: Ctx) {
   const { path } = await ctx.params;
-  const config = appleConfig();
-  if (!config || !path.every((p) => SAFE.test(p))) return null;
-  return { path, config };
+  if (!appleConfig() || !path.every((p) => SAFE.test(p))) return null;
+  // Posición del passTypeId según la ruta.
+  const typeAt = path[0] === "devices" ? 3 : path[0] === "passes" ? 1 : -1;
+  if (typeAt >= 0 && (!path[typeAt] || !(await isKnownPassType(path[typeAt])))) return null;
+  return { path };
 }
 
 export async function POST(request: Request, ctx: Ctx) {
   const p = await parse(ctx);
   if (!p) return empty(404);
-  const { path, config } = p;
+  const { path } = p;
 
   if (path.length === 1 && path[0] === "log") {
     const body = (await request.json().catch(() => null)) as { logs?: string[] } | null;
@@ -33,7 +39,7 @@ export async function POST(request: Request, ctx: Ctx) {
     return empty(200);
   }
 
-  if (path.length === 5 && path[0] === "devices" && path[2] === "registrations" && path[3] === config.passTypeId) {
+  if (path.length === 5 && path[0] === "devices" && path[2] === "registrations") {
     const [, device, , passTypeId, serial] = path;
     const card = await findAppleCard(serial, request.headers.get("authorization"));
     if (!card) return empty(401);
@@ -63,6 +69,16 @@ export async function POST(request: Request, ctx: Ctx) {
       console.error("[wallet:apple] registro", error.message);
       return empty(500);
     }
+    // Si ya tenía guardado el pase anterior (identificador compartido), se actualiza
+    // para que quede anulado y no queden dos tarjetas activas.
+    after(async () => {
+      const { count } = await admin
+        .from("apple_device_registrations")
+        .select("id", { count: "exact", head: true })
+        .eq("serial_number", serial)
+        .neq("pass_type_identifier", passTypeId);
+      if (count) await syncCardEverywhere(card.id);
+    });
     return empty(201);
   }
 
@@ -72,8 +88,8 @@ export async function POST(request: Request, ctx: Ctx) {
 export async function DELETE(request: Request, ctx: Ctx) {
   const p = await parse(ctx);
   if (!p) return empty(404);
-  const { path, config } = p;
-  if (!(path.length === 5 && path[0] === "devices" && path[2] === "registrations" && path[3] === config.passTypeId)) {
+  const { path } = p;
+  if (!(path.length === 5 && path[0] === "devices" && path[2] === "registrations")) {
     return empty(404);
   }
   const [, device, , passTypeId, serial] = path;
@@ -91,10 +107,10 @@ export async function DELETE(request: Request, ctx: Ctx) {
 export async function GET(request: Request, ctx: Ctx) {
   const p = await parse(ctx);
   if (!p) return empty(404);
-  const { path, config } = p;
+  const { path } = p;
 
   // Seriales de este dispositivo que cambiaron desde la marca indicada.
-  if (path.length === 4 && path[0] === "devices" && path[2] === "registrations" && path[3] === config.passTypeId) {
+  if (path.length === 4 && path[0] === "devices" && path[2] === "registrations") {
     const [, device, , passTypeId] = path;
     const admin = createAdminClient();
     const { data: regs } = await admin
@@ -119,7 +135,7 @@ export async function GET(request: Request, ctx: Ctx) {
   }
 
   // Pase actualizado.
-  if (path.length === 3 && path[0] === "passes" && path[1] === config.passTypeId) {
+  if (path.length === 3 && path[0] === "passes") {
     const card = await findAppleCard(path[2], request.headers.get("authorization"));
     if (!card) return empty(401);
     const ifModifiedSince = request.headers.get("if-modified-since");
@@ -129,7 +145,7 @@ export async function GET(request: Request, ctx: Ctx) {
       return empty(304);
     }
     try {
-      const result = await buildApplePass(card.id);
+      const result = await buildApplePass(card.id, path[1]);
       if (!result) return empty(404);
       return new Response(new Uint8Array(result.buffer), {
         headers: {

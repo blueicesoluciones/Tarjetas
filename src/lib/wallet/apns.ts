@@ -50,25 +50,25 @@ function send(session: http2.ClientHttp2Session, pushToken: string, jwt: string,
 
 /**
  * Avisa a los iPhone que tienen el pase que hay una versión nueva (push vacío).
- * El dispositivo luego pide el pase actualizado al Web Service.
+ * El dispositivo luego pide el pase actualizado al Web Service. Una tarjeta puede
+ * estar guardada con el identificador compartido y con el propio del negocio:
+ * cada registro se avisa con su identificador como topic.
  */
 export async function pushPassUpdate(serialNumber: string): Promise<void> {
-  const config = appleConfig();
-  if (!config) return;
+  if (!appleConfig()) return;
   const admin = createAdminClient();
   const { data: regs } = await admin
     .from("apple_device_registrations")
-    .select("id, push_token")
-    .eq("pass_type_identifier", config.passTypeId)
+    .select("id, push_token, pass_type_identifier")
     .eq("serial_number", serialNumber)
-    .returns<{ id: string; push_token: string }[]>();
+    .returns<{ id: string; push_token: string; pass_type_identifier: string }[]>();
   if (!regs || regs.length === 0) return;
 
   const jwt = await providerToken();
   const session = http2.connect(APNS_HOST);
   try {
     session.on("error", (err) => console.error("[apns] sesión", err.message));
-    const results = await Promise.allSettled(regs.map((r) => send(session, r.push_token, jwt, config.passTypeId)));
+    const results = await Promise.allSettled(regs.map((r) => send(session, r.push_token, jwt, r.pass_type_identifier)));
     // 410: el dispositivo ya no tiene el pase.
     const gone = regs.filter((_, i) => {
       const r = results[i];
