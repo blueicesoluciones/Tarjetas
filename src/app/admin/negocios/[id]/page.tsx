@@ -51,8 +51,18 @@ export default async function BusinessDetailPage({ params, searchParams }: PageP
     admin.from("programs").select("*").eq("business_id", id).eq("is_active", true).maybeSingle<Program>(),
     admin.from("profiles").select("*").eq("business_id", id).order("created_at").returns<Profile[]>(),
     admin.from("customers").select("id", { count: "exact", head: true }).eq("business_id", id).is("deleted_at", null),
-    admin.from("cards").select("id", { count: "exact", head: true }).eq("business_id", id),
-    admin.from("cards").select("id", { count: "exact", head: true }).eq("business_id", id).not("wallet_sync_error", "is", null),
+    // Tarjetas de clientes eliminados se conservan anonimizadas para estadísticas; no se cuentan.
+    admin
+      .from("cards")
+      .select("id, customers!inner(deleted_at)", { count: "exact", head: true })
+      .eq("business_id", id)
+      .is("customers.deleted_at", null),
+    admin
+      .from("cards")
+      .select("id, customers!inner(deleted_at)", { count: "exact", head: true })
+      .eq("business_id", id)
+      .is("customers.deleted_at", null)
+      .not("wallet_sync_error", "is", null),
     admin
       .from("business_apple_pass_types")
       .select("pass_type_id, csr_pem, cert_expires_at")
