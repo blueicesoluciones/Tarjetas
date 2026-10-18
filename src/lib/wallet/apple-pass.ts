@@ -135,14 +135,17 @@ export async function buildApplePass(cardId: string, passTypeId?: string): Promi
   const ref = await ensureAppleIdentity(cardId);
   const data = await loadWalletCardData(cardId);
   if (!ref || !data) return null;
+  // null: el negocio aún no tiene identificador propio y el compartido es de otro.
+  // Las tarjetas que ya estaban guardadas con el compartido se siguen actualizando.
   const current = await businessPassTypeId(data.businessId);
-  if (!current) return null;
-  const signer = await signerFor(passTypeId ?? current, data.businessId);
+  const requested = passTypeId ?? current;
+  if (!requested) return null;
+  const signer = await signerFor(requested, data.businessId);
   if (!signer) return null;
 
   // Pase anterior a que el negocio tuviera identificador propio: avisa que hay una
   // tarjeta nueva y, cuando el cliente ya la guardó, queda anulado (gris).
-  const legacy = signer.passTypeId !== current;
+  const legacy = current !== null && signer.passTypeId !== current;
   const replaced = legacy && (await hasRegistration(current, ref.serialNumber));
   const addUrl = data.webCardUrl.replace("/t/", "/api/apple/pass/");
 

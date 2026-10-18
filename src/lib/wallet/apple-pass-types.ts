@@ -47,18 +47,25 @@ export function clearPassTypeCache() {
   cache.clear();
 }
 
-/** Identificador con el que se emiten hoy los pases del negocio. */
+/** Negocio al que se le asignó el identificador compartido (APPLE_PASS_TYPE_ID), si hay uno. */
+export async function sharedPassTypeOwner(): Promise<string | null> {
+  const config = appleConfig();
+  if (!config) return null;
+  return (await rowBy("pass_type_id", config.passTypeId))?.business_id ?? null;
+}
+
+/**
+ * Identificador con el que se emiten hoy los pases nuevos del negocio. Un negocio
+ * sin identificador propio usa el compartido solo si no es de otro negocio; si lo
+ * es, devuelve null y Apple Wallet no se ofrece hasta configurar el suyo.
+ */
 export async function businessPassTypeId(businessId: string): Promise<string | null> {
   const config = appleConfig();
   if (!config) return null;
-  const own = passKeysSecret() ? await rowBy("business_id", businessId) : null;
-  return own?.pass_type_id ?? config.passTypeId;
-}
-
-/** Identificador propio y activo del negocio (null si usa el compartido). */
-export async function ownPassTypeId(businessId: string): Promise<string | null> {
-  if (!appleConfig() || !passKeysSecret()) return null;
-  return (await rowBy("business_id", businessId))?.pass_type_id ?? null;
+  const own = await rowBy("business_id", businessId);
+  if (own) return own.pass_type_id;
+  const owner = await sharedPassTypeOwner();
+  return owner && owner !== businessId ? null : config.passTypeId;
 }
 
 /**
@@ -68,19 +75,22 @@ export async function ownPassTypeId(businessId: string): Promise<string | null> 
 export async function signerFor(passTypeId: string, businessId: string): Promise<AppleSigner | null> {
   const config = appleConfig();
   if (!config) return null;
-  if (passTypeId === config.passTypeId) {
-    return {
-      passTypeId,
-      signerCert: config.signerCert,
-      signerKey: config.signerKey,
-      signerKeyPassphrase: config.signerKeyPassphrase,
-    };
-  }
   const secret = passKeysSecret();
-  if (!secret) return null;
-  const row = await rowBy("pass_type_id", passTypeId);
-  if (!row?.cert_pem || row.business_id !== businessId) return null;
-  return { passTypeId, signerCert: row.cert_pem, signerKey: decryptSecret(row.key_encrypted, secret) };
+  // El certificado subido en el panel manda (también para el compartido, así se
+  // renueva sin tocar las variables de Vercel).
+  const row = secret ? await rowBy("pass_type_id", passTypeId) : null;
+  if (row?.cert_pem && secret) {
+    // El compartido también firma los pases anteriores de otros negocios.
+    if (row.business_id !== businessId && passTypeId !== config.passTypeId) return null;
+    return { passTypeId, signerCert: row.cert_pem, signerKey: decryptSecret(row.key_encrypted, secret) };
+  }
+  if (passTypeId !== config.passTypeId) return null;
+  return {
+    passTypeId,
+    signerCert: config.signerCert,
+    signerKey: config.signerKey,
+    signerKeyPassphrase: config.signerKeyPassphrase,
+  };
 }
 
 /** ¿Es un identificador que emitimos (el compartido o uno de negocio activo)? */

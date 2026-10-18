@@ -60,6 +60,15 @@ export default async function BusinessDetailPage({ params, searchParams }: PageP
       .maybeSingle<{ pass_type_id: string; csr_pem: string; cert_expires_at: string | null }>(),
   ]);
   const apple = appleConfig();
+  const sharedOwner = apple
+    ? (
+        await admin
+          .from("business_apple_pass_types")
+          .select("business_id, businesses(name)")
+          .eq("pass_type_id", apple.passTypeId)
+          .maybeSingle<{ business_id: string; businesses: { name: string } }>()
+      ).data
+    : null;
   const applePassInfo: ApplePassInfo | null = applePass
     ? {
         passTypeId: applePass.pass_type_id,
@@ -280,6 +289,7 @@ export default async function BusinessDetailPage({ params, searchParams }: PageP
               businessId={business.id}
               slug={business.slug}
               suggested={suggestedPassTypeId(apple.passTypeId, business.slug)}
+              sharedOwnerName={sharedOwner && sharedOwner.business_id !== id ? sharedOwner.businesses.name : null}
               info={applePassInfo}
             />
           </CardContent>

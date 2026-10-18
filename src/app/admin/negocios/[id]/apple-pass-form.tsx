@@ -31,11 +31,14 @@ export function ApplePassForm({
   businessId,
   slug,
   suggested,
+  sharedOwnerName,
   info,
 }: {
   businessId: string;
   slug: string;
   suggested: string;
+  /** Negocio que usa el identificador principal (si no es este). */
+  sharedOwnerName: string | null;
   info: ApplePassInfo | null;
 }) {
   const [prepState, prepare, preparing] = useActionState<ApplePassState, FormData>(
@@ -71,8 +74,9 @@ export function ApplePassForm({
         </div>
       ) : (
         <p className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-amber-950">
-          Este negocio usa el identificador compartido: en el iPhone, sus tarjetas quedan en la misma pila que
-          las de los demás negocios. Configura su identificador propio con estos pasos.
+          {sharedOwnerName
+            ? `Este negocio aún no tiene identificador propio, así que sus clientes no pueden agregar tarjetas nuevas a Apple Wallet (el identificador principal es de ${sharedOwnerName}). Las que ya estaban guardadas se siguen actualizando. Configúralo con estos pasos.`
+            : "Este negocio usa el identificador compartido: en el iPhone, sus tarjetas quedan en la misma pila que las de los demás negocios. Configura su identificador propio con estos pasos."}
         </p>
       )}
 

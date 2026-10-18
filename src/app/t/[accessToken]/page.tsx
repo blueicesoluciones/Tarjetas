@@ -11,6 +11,7 @@ import { encodeCardQr } from "@/lib/domain/qr";
 import { nextGoal } from "@/lib/rewards";
 import { userAgent } from "@/lib/request";
 import { appleWallet, googleWallet } from "@/lib/wallet";
+import { businessPassTypeId } from "@/lib/wallet/apple-pass-types";
 import { AutoRefresh } from "./auto-refresh";
 import { CardQr } from "./card-qr";
 import { StampGrid } from "@/components/customer/stamp-grid";
@@ -147,7 +148,7 @@ export default async function WebCardPage({ params, searchParams }: PageProps<"/
           accessToken={card.accessToken}
           serverPlatform={device.platform}
           googleEnabled={googleWallet.isEnabled()}
-          appleEnabled={appleWallet.isEnabled()}
+          appleEnabled={appleWallet.isEnabled() && (await businessPassTypeId(card.business.id)) !== null}
         />
 
         {card.totalRedemptions > 0 ? (
