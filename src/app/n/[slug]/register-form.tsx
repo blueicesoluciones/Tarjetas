@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { z } from "zod";
+import { BirthdayFields } from "@/components/customer/birthday-fields";
 import { FieldError } from "@/components/customer/field-error";
 import { postJson } from "@/components/customer/post-json";
 import { Input } from "@/components/ui/input";
@@ -39,7 +40,7 @@ export function RegisterForm({
     formState: { errors, isSubmitting },
   } = useForm<FormInput, unknown, FormOutput>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { slug, fullName: "", phone: "", pin: "", pinConfirm: "", marketingConsent: false },
+    defaultValues: { slug, fullName: "", phone: "", pin: "", pinConfirm: "", birthMonth: "", birthDay: "", marketingConsent: false },
   });
 
   async function onSubmit(values: FormOutput) {
@@ -79,6 +80,11 @@ export function RegisterForm({
         {phone.hint && !errors.phone ? <p className="text-xs text-muted-foreground">{phone.hint}</p> : null}
         <FieldError message={errors.phone?.message} />
       </div>
+      <BirthdayFields
+        monthProps={register("birthMonth")}
+        dayProps={register("birthDay")}
+        error={errors.birthMonth?.message ?? errors.birthDay?.message}
+      />
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="pin">PIN (4 dígitos)</Label>

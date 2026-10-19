@@ -42,7 +42,7 @@ interface CardRow {
   google_object_id: string | null;
   apple_serial_number: string | null;
   apple_message: string | null;
-  customers: { full_name: string };
+  customers: { full_name: string; birth_month: number | null };
   programs: {
     card_title: string;
     stamps_required: number;
@@ -56,7 +56,7 @@ export async function loadWalletCardData(cardId: string): Promise<WalletCardData
   const { data } = await createAdminClient()
     .from("cards")
     .select(
-      "id, business_id, program_id, public_code, access_token, stamps_count, claimed_milestones, google_object_id, apple_serial_number, apple_message, customers(full_name), programs(card_title, stamps_required, reward_description, design_version), businesses(name, logo_url, primary_color, text_color, plan)",
+      "id, business_id, program_id, public_code, access_token, stamps_count, claimed_milestones, google_object_id, apple_serial_number, apple_message, customers(full_name, birth_month), programs(card_title, stamps_required, reward_description, design_version), businesses(name, logo_url, primary_color, text_color, plan)",
     )
     .eq("id", cardId)
     .maybeSingle<CardRow>();
@@ -85,6 +85,7 @@ export async function loadWalletCardData(cardId: string): Promise<WalletCardData
     googleObjectId: data.google_object_id,
     appleSerialNumber: data.apple_serial_number,
     appleMessage: data.apple_message,
+    needsBirthday: data.customers.birth_month === null,
   };
 }
 

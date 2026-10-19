@@ -2,6 +2,7 @@ import { writeAudit } from "@/lib/audit";
 import { getBusinessWithProgram } from "@/lib/auth/business";
 import { staffForApi } from "@/lib/auth/staff";
 import { jsonError } from "@/lib/http/json";
+import { formatBirthday } from "@/lib/domain/birthday";
 import { toCsv } from "@/lib/panel/csv";
 import { planFeatures } from "@/lib/plans";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -10,6 +11,8 @@ interface Row {
   full_name: string;
   phone_e164: string;
   marketing_consent: boolean;
+  birth_month: number | null;
+  birth_day: number | null;
   created_at: string;
   cards: {
     stamps_count: number;
@@ -32,7 +35,7 @@ export async function GET() {
 
   const { data, error } = await createAdminClient()
     .from("customers")
-    .select("full_name, phone_e164, marketing_consent, created_at, cards(stamps_count, total_stamps, total_redemptions, last_stamp_at, google_object_id)")
+    .select("full_name, phone_e164, marketing_consent, birth_month, birth_day, created_at, cards(stamps_count, total_stamps, total_redemptions, last_stamp_at, google_object_id)")
     .eq("business_id", business.id)
     .is("deleted_at", null)
     .order("created_at", { ascending: true })
@@ -42,12 +45,13 @@ export async function GET() {
   const date = (iso: string | null) =>
     iso ? new Intl.DateTimeFormat("es-CO", { timeZone: business.timezone, dateStyle: "short" }).format(new Date(iso)) : "";
   const csv = toCsv(
-    ["Nombre", "Celular", "Sellos actuales", "Sellos para el premio", "Sellos históricos", "Premios canjeados", "Último sello", "Google Wallet", "Acepta promociones", "Inscrito"],
+    ["Nombre", "Celular", "Cumpleaños", "Sellos actuales", "Sellos para el premio", "Sellos históricos", "Premios canjeados", "Último sello", "Google Wallet", "Acepta promociones", "Inscrito"],
     (data ?? []).map((c) => {
       const card = c.cards[0];
       return [
         c.full_name,
         c.phone_e164,
+        c.birth_month && c.birth_day ? formatBirthday(c.birth_month, c.birth_day) : "",
         card?.stamps_count ?? 0,
         program?.stamps_required ?? "",
         card?.total_stamps ?? 0,

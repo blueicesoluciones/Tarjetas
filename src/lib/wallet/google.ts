@@ -116,7 +116,16 @@ function objectPatch(data: WalletCardData) {
             : "Premio",
         body: data.rewardDescription,
       },
+      ...(data.needsBirthday
+        ? [{ id: "birthday", header: "Actualiza tu información", body: "Cuéntanos cuándo cumples años: toca «Agregar mi cumpleaños»." }]
+        : []),
     ],
+    linksModuleData: {
+      uris: [
+        ...(data.needsBirthday ? [{ id: "birthday", uri: `${data.webCardUrl}#cumpleanos`, description: "Agregar mi cumpleaños" }] : []),
+        { id: "web", uri: data.webCardUrl, description: "Ver mi tarjeta" },
+      ],
+    },
   };
 }
 
@@ -126,9 +135,6 @@ function objectBody(data: WalletCardData) {
     classId: googleClassId(data.programId),
     ...objectPatch(data),
     barcode: { type: "QR_CODE", value: data.qrValue, alternateText: data.publicCode },
-    linksModuleData: {
-      uris: [{ id: "web", uri: data.webCardUrl, description: "Ver mi tarjeta" }],
-    },
   };
 }
 

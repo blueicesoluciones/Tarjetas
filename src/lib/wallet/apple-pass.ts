@@ -218,6 +218,15 @@ export async function buildApplePass(cardId: string, passTypeId?: string): Promi
       attributedValue: `<a href="${addUrl}">Toca aquí para agregarla</a>`,
     });
   }
+  if (data.needsBirthday) {
+    const birthdayUrl = `${data.webCardUrl}#cumpleanos`;
+    pass.backFields.push({
+      key: "birthday",
+      label: "Actualiza tu información",
+      value: birthdayUrl,
+      attributedValue: `<a href="${birthdayUrl}">Toca aquí para agregar tu cumpleaños</a>`,
+    });
+  }
   pass.backFields.push(
     { key: "rewards", label: "Premios", value: rewards.join("\n") },
     { key: "web", label: "Tu tarjeta web", value: data.webCardUrl },

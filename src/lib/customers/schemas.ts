@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { birthdaySchema, isValidBirthday } from "@/lib/domain/birthday";
 import { PIN_ERROR_MESSAGES, validatePin } from "@/lib/domain/pin";
 
 export const pinSchema = z.string().superRefine((pin, ctx) => {
@@ -13,10 +14,13 @@ export const registerSchema = z
     phone: z.string().trim().min(6, "Ingresa tu teléfono").max(25),
     pin: pinSchema,
     pinConfirm: z.string(),
+    birthMonth: birthdaySchema.shape.birthMonth,
+    birthDay: birthdaySchema.shape.birthDay,
     privacyAccepted: z.literal(true, { message: "Debes autorizar el tratamiento de tus datos para crear la tarjeta" }),
     marketingConsent: z.boolean().default(false),
   })
-  .refine((d) => d.pin === d.pinConfirm, { message: "Los PIN no coinciden", path: ["pinConfirm"] });
+  .refine((d) => d.pin === d.pinConfirm, { message: "Los PIN no coinciden", path: ["pinConfirm"] })
+  .refine((d) => isValidBirthday(d.birthMonth, d.birthDay), { message: "Esa fecha no existe", path: ["birthDay"] });
 
 export type RegisterInput = z.input<typeof registerSchema>;
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { BirthdaysToday } from "@/components/panel/birthdays-today";
 import { EventsTable } from "@/components/panel/events-table";
 import { LockedFeature } from "@/components/panel/locked-feature";
 import { PageHeader } from "@/components/panel/page-header";
@@ -159,6 +160,8 @@ export default async function PanelHomePage() {
               : undefined
         }
       />
+
+      <BirthdaysToday businessId={businessId} timeZone={timeZone} />
 
       <TileGrid tiles={basicTiles} />
 

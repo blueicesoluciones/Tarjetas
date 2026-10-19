@@ -25,6 +25,8 @@ export interface WalletCardData {
   appleSerialNumber: string | null;
   /** Último aviso (campaña o «Te extrañamos») para el pase de Apple. */
   appleMessage: string | null;
+  /** El cliente no ha dado su cumpleaños: el pase le pide actualizar sus datos. */
+  needsBirthday: boolean;
 }
 
 export interface WalletProgramData {

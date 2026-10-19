@@ -13,6 +13,8 @@ export interface PublicCardView {
   totalRedemptions: number;
   status: "active" | "blocked";
   customerName: string;
+  /** Inscrito antes de pedir el cumpleaños: la tarjeta web le pide completarlo. */
+  needsBirthday: boolean;
   /** Premios intermedios del ciclo actual (vacío si el plan no los incluye). */
   milestones: MilestoneStatus[];
   program: {
@@ -42,7 +44,7 @@ interface Row {
   total_redemptions: number;
   claimed_milestones: number[];
   status: "active" | "blocked";
-  customers: { full_name: string; deleted_at: string | null };
+  customers: { full_name: string; birth_month: number | null; deleted_at: string | null };
   programs: { id: string; card_title: string; stamps_required: number; reward_description: string; design_version: number };
   businesses: {
     id: string;
@@ -63,7 +65,7 @@ export const getCardByAccessToken = cache(async (accessToken: string): Promise<P
   const { data } = await createAdminClient()
     .from("cards")
     .select(
-      "id, public_code, access_token, stamps_count, total_redemptions, claimed_milestones, status, customers(full_name, deleted_at), programs(id, card_title, stamps_required, reward_description, design_version), businesses(id, name, slug, logo_url, card_background_url, primary_color, text_color, status, plan)",
+      "id, public_code, access_token, stamps_count, total_redemptions, claimed_milestones, status, customers(full_name, birth_month, deleted_at), programs(id, card_title, stamps_required, reward_description, design_version), businesses(id, name, slug, logo_url, card_background_url, primary_color, text_color, status, plan)",
     )
     .eq("access_token", accessToken)
     .maybeSingle<Row>();
@@ -78,6 +80,7 @@ export const getCardByAccessToken = cache(async (accessToken: string): Promise<P
     totalRedemptions: data.total_redemptions,
     status: data.status,
     customerName: data.customers.full_name,
+    needsBirthday: data.customers.birth_month === null,
     milestones: milestoneStatuses(milestones, data.stamps_count, data.claimed_milestones ?? []),
     program: {
       id: data.programs.id,

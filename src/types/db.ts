@@ -79,6 +79,9 @@ export interface Customer {
   pin_lockout_count: number;
   marketing_consent: boolean;
   privacy_accepted_at: string;
+  /** Cumpleaños sin año (ambos o ninguno). */
+  birth_month: number | null;
+  birth_day: number | null;
   deleted_at: string | null;
   created_at: string;
   updated_at: string;

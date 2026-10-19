@@ -143,6 +143,7 @@ Entrada: el cliente abre `/n/[slug]` desde un QR impreso, enlace compartido por 
    - Nombre (obligatorio)
    - Teléfono (obligatorio, normalizado a E.164, país por defecto configurable por negocio)
    - PIN de 4 dígitos + confirmación (obligatorio)
+   - Cumpleaños: mes y día, sin año (obligatorio). Los clientes inscritos antes de pedirlo ven en su tarjeta web el aviso «Actualiza tu información» y lo completan ahí (una sola vez; después solo el owner lo corrige desde el detalle del cliente). Mientras falte, el pase de Wallet trae el enlace «Agregar mi cumpleaños». El resumen del panel avisa quién cumple años hoy (zona horaria del negocio; el 29 de febrero se celebra el 28 en años no bisiestos)
    - Casilla de aceptación de política de privacidad (obligatoria) con enlace a `/privacidad`
    - Casilla de consentimiento para recibir promociones (opcional, desmarcada por defecto)
 5. Validaciones:
@@ -341,6 +342,7 @@ create type stamp_event_type as enum ('stamp', 'manual_adjust', 'redeem', 'undo'
 | pin_locked_until | timestamptz | |
 | pin_lockout_count | int not null default 0 | |
 | marketing_consent | boolean not null default false | |
+| birth_month, birth_day | smallint | cumpleaños sin año; ambos o ninguno |
 | privacy_accepted_at | timestamptz not null | |
 | created_at, updated_at | timestamptz | |
 

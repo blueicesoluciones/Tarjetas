@@ -41,6 +41,7 @@ export default function PrivacyPage() {
       <ul>
         <li>Nombre.</li>
         <li>Número de celular.</li>
+        <li>El día y el mes de tu cumpleaños (no se pide el año).</li>
         <li>
           Un PIN de 4 dígitos, que se guarda cifrado de forma irreversible. Nadie puede verlo: ni el negocio ni{" "}
           {company}.
@@ -60,6 +61,7 @@ export default function PrivacyPage() {
         <li>Crear y mostrar tu tarjeta de sellos en la web y, si lo eliges, en Google Wallet o Apple Wallet.</li>
         <li>Permitir que el personal del negocio te identifique en caja, sume sellos y entregue tus premios.</li>
         <li>Permitirte volver a entrar a tu tarjeta con tu celular y PIN, y restablecer tu PIN con ayuda del negocio.</li>
+        <li>Avisarle al negocio el día de tu cumpleaños para que pueda saludarte.</li>
         <li>Proteger tu tarjeta frente a accesos no autorizados y prevenir fraudes.</li>
         <li>Generar estadísticas agregadas para el negocio (por ejemplo, cantidad de sellos y canjes).</li>
         <li>
@@ -113,7 +115,7 @@ export default function PrivacyPage() {
         </li>
       </ul>
       <p>
-        Al eliminar tus datos se borran tu nombre, celular y PIN, y tu tarjeta queda desactivada. Se conserva
+        Al eliminar tus datos se borran tu nombre, celular, cumpleaños y PIN, y tu tarjeta queda desactivada. Se conserva
         solo información estadística anónima que no permite identificarte.
       </p>
 

@@ -108,6 +108,8 @@ export async function deleteCustomerData(ctx: StaffContext, customerId: string) 
       email: null,
       pin_hash: "!",
       marketing_consent: false,
+      birth_month: null,
+      birth_day: null,
       deleted_at: new Date().toISOString(),
     })
     .eq("id", customer.id);
@@ -122,6 +124,24 @@ export async function deleteCustomerData(ctx: StaffContext, customerId: string) 
     businessId: customer.business_id,
     actorId: ctx.userId,
     action: "customer.delete",
+    entityType: "customer",
+    entityId: customer.id,
+    impersonating: ctx.impersonating,
+  });
+  return { ok: true };
+}
+
+/** El dueño corrige (o agrega) el cumpleaños de un cliente. */
+export async function updateCustomerBirthday(ctx: StaffContext, customerId: string, month: number, day: number) {
+  const customer = await customerForOwner(ctx, customerId);
+  if (!customer) return null;
+  const admin = createAdminClient();
+  const { error } = await admin.from("customers").update({ birth_month: month, birth_day: day }).eq("id", customer.id);
+  if (error) throw new Error(error.message);
+  await writeAudit({
+    businessId: customer.business_id,
+    actorId: ctx.userId,
+    action: "customer.birthday",
     entityType: "customer",
     entityId: customer.id,
     impersonating: ctx.impersonating,

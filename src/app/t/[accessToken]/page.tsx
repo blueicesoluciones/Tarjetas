@@ -13,6 +13,7 @@ import { userAgent } from "@/lib/request";
 import { appleWallet, googleWallet } from "@/lib/wallet";
 import { businessPassTypeId } from "@/lib/wallet/apple-pass-types";
 import { AutoRefresh } from "./auto-refresh";
+import { BirthdayForm } from "./birthday-form";
 import { CardQr } from "./card-qr";
 import { StampGrid } from "@/components/customer/stamp-grid";
 import { WalletActions } from "./wallet-actions";
@@ -41,6 +42,14 @@ export default async function WebCardPage({ params, searchParams }: PageProps<"/
       <AutoRefresh intervalMs={20000} />
       <main className="mx-auto max-w-md space-y-4 px-4 pt-6">
         {device.inAppBrowser ? <InAppBrowserNotice app={device.inAppBrowser} platform={device.platform} /> : null}
+        {card.needsBirthday ? (
+          <BirthdayForm
+            accessToken={card.accessToken}
+            businessName={business.name}
+            buttonColor={business.primaryColor}
+            buttonText={business.textColor}
+          />
+        ) : null}
 
         <article
           className="overflow-hidden rounded-3xl shadow-xl"

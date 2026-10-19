@@ -18,12 +18,15 @@ import {
 import { normalizePhone, phoneFieldHint } from "@/lib/domain/phone";
 import { newAccessToken, newPublicCode } from "@/lib/domain/tokens";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createCardEverywhere } from "@/lib/wallet";
+import { createCardEverywhere, syncCardEverywhere } from "@/lib/wallet";
 import type { Business, Customer, Program } from "@/types/db";
 import type { z } from "zod";
 import type { changePinSchema, loginSchema, registerSchema, savedLoginSchema } from "./schemas";
 
 export const BCRYPT_COST = 10;
+
+/** Título del aviso de Wallet que pide el cumpleaños a los clientes ya inscritos. */
+export const BIRTHDAY_REMINDER_TITLE = "Actualiza tu información";
 
 // Hash de relleno para comparar cuando el teléfono no existe (tiempo de respuesta similar).
 const DUMMY_HASH = "$2b$10$49oNjZZZnIgvHylvDnHjuuF83mSW4KzQlNiVzmBZf6wn50fPQMy5G";
@@ -108,6 +111,8 @@ export async function registerCustomer(
       phone_e164: phone,
       pin_hash: pinHash,
       marketing_consent: input.marketingConsent,
+      birth_month: input.birthMonth,
+      birth_day: input.birthDay,
       privacy_accepted_at: new Date().toISOString(),
     })
     .select("id")
@@ -321,4 +326,61 @@ export async function changePinWithTicket(input: z.output<typeof changePinSchema
   if (!card) return { ok: false, error: "No encontramos tu tarjeta", status: 404 };
   await setCustomerSession({ cardId: card.id, businessId: ticket.businessId });
   return { ok: true, redirectTo: `/t/${card.access_token}` };
+}
+
+// ---------------------------------------------------------------------------
+// Cumpleaños desde la tarjeta web (clientes inscritos antes de pedirlo)
+// ---------------------------------------------------------------------------
+/**
+ * Quien tiene el enlace personal puede completar el cumpleaños una sola vez;
+ * después solo el dueño lo corrige desde el panel.
+ */
+export async function saveBirthdayFromCard(
+  accessToken: string,
+  birthday: { birthMonth: number; birthDay: number },
+  ip: string,
+): Promise<ServiceResult<object>> {
+  if (!(await checkRateLimit(`birthday_ip:${ip}`, 20, 600))) {
+    return { ok: false, error: "Demasiados intentos. Espera unos minutos." };
+  }
+  if (!/^[A-Za-z0-9_-]{32,80}$/.test(accessToken)) return { ok: false, error: "Tarjeta no encontrada" };
+  const admin = createAdminClient();
+  const { data: card } = await admin
+    .from("cards")
+    .select("id, business_id, customer_id, apple_message, customers(birth_month, deleted_at)")
+    .eq("access_token", accessToken)
+    .maybeSingle<{
+      id: string;
+      business_id: string;
+      customer_id: string;
+      apple_message: string | null;
+      customers: { birth_month: number | null; deleted_at: string | null };
+    }>();
+  if (!card || card.customers.deleted_at) return { ok: false, error: "Tarjeta no encontrada" };
+  if (card.customers.birth_month !== null) return { ok: true };
+
+  const { error } = await admin
+    .from("customers")
+    .update({ birth_month: birthday.birthMonth, birth_day: birthday.birthDay })
+    .eq("id", card.customer_id)
+    .is("birth_month", null);
+  if (error) {
+    console.error("[birthday]", error.message);
+    return { ok: false, error: "No pudimos guardar tu cumpleaños, intenta de nuevo" };
+  }
+  await writeAudit({
+    businessId: card.business_id,
+    actorId: null,
+    action: "customer.birthday",
+    entityType: "customer",
+    entityId: card.customer_id,
+    metadata: { source: "web_card" },
+  });
+  // El pase de Wallet deja de pedir la actualización. En Apple, si el aviso
+  // vigente era el de actualizar datos, se cambia por un agradecimiento.
+  if (card.apple_message?.startsWith(BIRTHDAY_REMINDER_TITLE)) {
+    await admin.from("cards").update({ apple_message: "¡Gracias! Ya guardamos tu cumpleaños." }).eq("id", card.id);
+  }
+  after(() => syncCardEverywhere(card.id));
+  return { ok: true };
 }

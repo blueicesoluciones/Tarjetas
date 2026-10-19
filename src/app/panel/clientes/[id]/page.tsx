@@ -11,6 +11,7 @@ import { listEvents } from "@/lib/panel/events";
 import { formatDate, formatDateTime, pinLockStatus } from "@/lib/panel/format";
 import { createClient } from "@/lib/supabase/server";
 import { AdjustForm } from "./adjust-form";
+import { BirthdayEdit } from "./birthday-edit";
 import { DeleteCustomer } from "./delete-customer";
 import { RegenerateLinkButton, ResetPinButton } from "./customer-actions";
 
@@ -26,6 +27,8 @@ interface CustomerRow {
   pin_lockout_count: number;
   marketing_consent: boolean;
   privacy_accepted_at: string;
+  birth_month: number | null;
+  birth_day: number | null;
   deleted_at: string | null;
   created_at: string;
 }
@@ -56,7 +59,7 @@ export default async function CustomerDetailPage({ params }: PageProps<"/panel/c
   const { data: customer } = await supabase
     .from("customers")
     .select(
-      "id, business_id, full_name, phone_e164, pin_must_change, pin_locked_until, pin_lockout_count, marketing_consent, privacy_accepted_at, deleted_at, created_at",
+      "id, business_id, full_name, phone_e164, pin_must_change, pin_locked_until, pin_lockout_count, marketing_consent, privacy_accepted_at, birth_month, birth_day, deleted_at, created_at",
     )
     .eq("id", id)
     .eq("business_id", businessId)
@@ -105,6 +108,10 @@ export default async function CustomerDetailPage({ params }: PageProps<"/panel/c
           <CardContent>
             <dl className="space-y-2 text-sm">
               <Item label="Teléfono" value={formatPhone(customer.phone_e164)} />
+              <Item
+                label="Cumpleaños"
+                value={<BirthdayEdit customerId={customer.id} month={customer.birth_month} day={customer.birth_day} />}
+              />
               <Item label="Promociones" value={customer.marketing_consent ? "Acepta" : "No acepta"} />
               <Item label="Inscrito" value={formatDate(customer.created_at, timeZone)} />
               <Item label="Código de tarjeta" value={<span className="font-mono">{card?.public_code ?? "—"}</span>} />
