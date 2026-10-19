@@ -104,14 +104,12 @@ export function appleStatusLine(data: WalletCardData): string {
   return "Muestra este código en caja para sumar sellos";
 }
 
-/** Texto del frente: el próximo premio y cuántos sellos faltan. */
+/** Texto del frente: el próximo premio (los sellos se ven en la franja y en SELLOS). */
 export function nextRewardLine(data: WalletCardData): string {
   if (data.rewardAvailable) return `¡Listo! ${data.rewardDescription}`;
   const pending = data.milestones.find((m) => m.available);
   if (pending) return `¡Listo! ${pending.description}`;
-  const goal = nextGoal(data.milestones, data.stampsCount, data.stampsRequired, data.rewardDescription);
-  const left = goal.stampsAt - data.stampsCount;
-  return `${goal.description} · ${left === 1 ? "falta 1" : `faltan ${left}`}`;
+  return nextGoal(data.milestones, data.stampsCount, data.stampsRequired, data.rewardDescription).description;
 }
 
 /** ¿El iPhone ya registró el pase con este identificador? */
@@ -182,7 +180,7 @@ export async function buildApplePass(cardId: string, passTypeId?: string): Promi
     value: `${data.stampsCount}/${data.stampsRequired}`,
   });
   pass.secondaryFields.push({ key: "customer", label: "CLIENTE", value: data.customerName });
-  // Frente: el próximo premio y cuánto falta. Sin changeMessage para no avisar en cada sello.
+  // Frente: el próximo premio. Sin changeMessage para no avisar en cada sello.
   pass.secondaryFields.push({
     key: "next",
     label: "PRÓXIMO PREMIO",
