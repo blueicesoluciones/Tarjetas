@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { FormStatus } from "@/components/admin/form-status";
 import { Button } from "@/components/ui/button";
 import {
@@ -96,7 +96,7 @@ export function BranchRow({ branch }: { branch: BranchItem }) {
   );
 }
 
-/** Sede de un cajero; se guarda al cambiar. */
+/** Sede de un cajero; se guarda al cambiar (controlado, ver BranchSelect). */
 export function CashierBranchSelect({
   userId,
   branchId,
@@ -106,25 +106,32 @@ export function CashierBranchSelect({
   branchId: string | null;
   branches: { id: string; name: string; isActive: boolean }[];
 }) {
+  const [value, setValue] = useState(branchId ?? "");
+  const [pending, startTransition] = useTransition();
   return (
-    <form action={assignCashierBranch}>
-      <input type="hidden" name="userId" value={userId} />
-      <select
-        name="branchId"
-        defaultValue={branchId ?? ""}
-        aria-label="Sede del cajero"
-        onChange={(e) => e.currentTarget.form?.requestSubmit()}
-        className="h-8 rounded-md border bg-background px-2 text-sm"
-      >
-        <option value="">Sin sede</option>
-        {branches
-          .filter((b) => b.isActive || b.id === branchId)
-          .map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.name}
-            </option>
-          ))}
-      </select>
-    </form>
+    <select
+      name="branchId"
+      value={value}
+      disabled={pending}
+      aria-label="Sede del cajero"
+      onChange={(e) => {
+        const next = e.target.value;
+        setValue(next);
+        const fd = new FormData();
+        fd.set("userId", userId);
+        fd.set("branchId", next);
+        startTransition(() => assignCashierBranch(fd));
+      }}
+      className="h-8 rounded-md border bg-background px-2 text-sm"
+    >
+      <option value="">Sin sede</option>
+      {branches
+        .filter((b) => b.isActive || b.id === branchId)
+        .map((b) => (
+          <option key={b.id} value={b.id}>
+            {b.name}
+          </option>
+        ))}
+    </select>
   );
 }
