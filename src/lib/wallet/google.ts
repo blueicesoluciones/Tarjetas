@@ -1,6 +1,7 @@
 import "server-only";
 import { JWT } from "google-auth-library";
 import jwt from "jsonwebtoken";
+import { BIRTHDAY_REMINDER_BODY, BIRTHDAY_REMINDER_TITLE } from "@/lib/domain/birthday";
 import { appUrl, serverEnv } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { WalletCardData, WalletProgramData, WalletProvider } from "./types";
@@ -117,7 +118,7 @@ function objectPatch(data: WalletCardData) {
         body: data.rewardDescription,
       },
       ...(data.needsBirthday
-        ? [{ id: "birthday", header: "Actualiza tu información", body: "Cuéntanos cuándo cumples años: toca «Agregar mi cumpleaños»." }]
+        ? [{ id: "birthday", header: BIRTHDAY_REMINDER_TITLE, body: BIRTHDAY_REMINDER_BODY }]
         : []),
     ],
     linksModuleData: {

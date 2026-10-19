@@ -18,7 +18,9 @@ import { planFeatures } from "@/lib/plans";
 import { appleConfig } from "@/lib/wallet/apple-config";
 import { suggestedPassTypeId } from "@/lib/wallet/apple-certs";
 import { listBranches } from "@/lib/branches";
+import { BIRTHDAY_REMINDER_ACTION, birthdayReminderAudience } from "@/lib/campaigns";
 import { ApplePassForm, type ApplePassInfo } from "./apple-pass-form";
+import { BirthdayReminderForm } from "./birthday-reminder";
 import { BranchRow, CashierBranchSelect, CreateBranchForm } from "./branch-forms";
 import { BusinessEditForm, ChangePasswordForm, CreateUserForm, DeleteBusinessForm, ProgramEditForm } from "./forms";
 
@@ -71,7 +73,24 @@ export default async function BusinessDetailPage({ params, searchParams }: PageP
       .eq("business_id", id)
       .maybeSingle<{ pass_type_id: string; csr_pem: string; cert_expires_at: string | null }>(),
   ]);
-  const branches = await listBranches(id);
+  const [branches, withoutBirthday, birthdayTargets, { data: lastReminder }] = await Promise.all([
+    listBranches(id),
+    admin
+      .from("customers")
+      .select("id", { count: "exact", head: true })
+      .eq("business_id", id)
+      .is("deleted_at", null)
+      .is("birth_month", null),
+    birthdayReminderAudience(id),
+    admin
+      .from("audit_logs")
+      .select("created_at, metadata")
+      .eq("business_id", id)
+      .eq("action", BIRTHDAY_REMINDER_ACTION)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<{ created_at: string; metadata: { sent?: number; recipients?: number } }>(),
+  ]);
   const multiBranch = planFeatures(business?.plan).multiBranch;
   const branchOptions = branches.map((b) => ({ id: b.id, name: b.name, isActive: b.is_active }));
   const apple = appleConfig();
@@ -291,6 +310,34 @@ export default async function BusinessDetailPage({ params, searchParams }: PageP
           ) : (
             <p className="text-sm text-muted-foreground">Este negocio no tiene un programa activo.</p>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Cumpleaños</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <p>
+            {(withoutBirthday.count ?? 0) === 0
+              ? "Todos los clientes tienen su cumpleaños registrado."
+              : `${withoutBirthday.count} ${withoutBirthday.count === 1 ? "cliente no ha" : "clientes no han"} registrado su cumpleaños (se inscribieron antes de pedirlo). Su tarjeta web les pide actualizar la información.`}
+          </p>
+          {birthdayTargets.length > 0 ? (
+            <>
+              <p className="text-muted-foreground">
+                {birthdayTargets.length} {birthdayTargets.length === 1 ? "tiene" : "tienen"} la tarjeta en Wallet: puedes enviar{birthdayTargets.length === 1 ? "le" : "les"} el aviso
+                «Actualiza tu información» con el enlace para agregar su cumpleaños.
+              </p>
+              <BirthdayReminderForm businessId={business.id} pending={birthdayTargets.length} />
+            </>
+          ) : null}
+          {lastReminder ? (
+            <p className="text-xs text-muted-foreground">
+              Último aviso: {formatDate(lastReminder.created_at)}
+              {typeof lastReminder.metadata?.sent === "number" ? ` · llegó a ${lastReminder.metadata.sent} de ${lastReminder.metadata.recipients ?? 0}` : ""}
+            </p>
+          ) : null}
         </CardContent>
       </Card>
 

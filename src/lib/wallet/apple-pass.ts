@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { PKPass } from "passkit-generator";
 import sharp from "sharp";
 import { nanoid } from "nanoid";
+import { BIRTHDAY_REMINDER_TITLE } from "@/lib/domain/birthday";
 import { appUrl } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { nextGoal } from "@/lib/rewards";
@@ -222,9 +223,9 @@ export async function buildApplePass(cardId: string, passTypeId?: string): Promi
     const birthdayUrl = `${data.webCardUrl}#cumpleanos`;
     pass.backFields.push({
       key: "birthday",
-      label: "Actualiza tu información",
+      label: BIRTHDAY_REMINDER_TITLE,
       value: birthdayUrl,
-      attributedValue: `<a href="${birthdayUrl}">Toca aquí para agregar tu cumpleaños</a>`,
+      attributedValue: `<a href="${birthdayUrl}">Agregar mi cumpleaños</a>`,
     });
   }
   pass.backFields.push(

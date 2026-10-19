@@ -17,6 +17,10 @@ export const MONTHS = [
   "diciembre",
 ] as const;
 
+/** Aviso de Wallet que pide el cumpleaños a los clientes inscritos antes de pedirlo. */
+export const BIRTHDAY_REMINDER_TITLE = "Actualiza tu información";
+export const BIRTHDAY_REMINDER_BODY = "Cuéntanos cuándo cumples años: en los detalles de tu tarjeta toca «Agregar mi cumpleaños».";
+
 /** Días del mes sin año: febrero admite el 29. */
 export function daysInMonth(month: number): number {
   if (month === 2) return 29;

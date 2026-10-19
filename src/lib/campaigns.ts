@@ -1,7 +1,8 @@
 import "server-only";
+import { BIRTHDAY_REMINDER_BODY, BIRTHDAY_REMINDER_TITLE } from "@/lib/domain/birthday";
 import { startOfLocalMonth } from "@/lib/panel/format";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { appleWallet, googleWallet } from "@/lib/wallet";
+import { appleWallet, googleWallet, syncCardEverywhere } from "@/lib/wallet";
 import { pushPassUpdate } from "@/lib/wallet/apns";
 import { sendGoogleWalletMessage } from "@/lib/wallet/google";
 
@@ -125,4 +126,35 @@ export async function runCampaign(campaignId: string): Promise<void> {
       .update({ status: "failed", finished_at: new Date().toISOString() })
       .eq("id", campaign.id);
   }
+}
+
+/** Acción de auditoría del aviso de cumpleaños (también sirve para saber cuándo se envió). */
+export const BIRTHDAY_REMINDER_ACTION = "wallet.birthday_reminder";
+
+/**
+ * Pases en Wallet de clientes que no han dado su cumpleaños (inscritos antes de
+ * pedirlo). Es un aviso de servicio, no promocional: no exige consentimiento.
+ */
+export async function birthdayReminderAudience(businessId: string): Promise<WalletTarget[]> {
+  const { data } = await createAdminClient()
+    .from("cards")
+    .select("id, google_object_id, apple_serial_number, customers!inner(birth_month, deleted_at)")
+    .eq("business_id", businessId)
+    .eq("status", "active")
+    .or("google_object_id.not.is.null,apple_serial_number.not.is.null")
+    .is("customers.birth_month", null)
+    .is("customers.deleted_at", null)
+    .returns<{ id: string; google_object_id: string | null; apple_serial_number: string | null }[]>();
+  return (data ?? []).map((c) => ({ cardId: c.id, objectId: c.google_object_id, appleSerial: c.apple_serial_number }));
+}
+
+/**
+ * Pide el cumpleaños por Wallet: primero actualiza cada pase (Google recibe el
+ * enlace «Agregar mi cumpleaños»; Apple, el campo con el enlace) y luego envía el aviso.
+ */
+export async function sendBirthdayReminder(targets: WalletTarget[]): Promise<{ sent: number; failed: number }> {
+  for (let i = 0; i < targets.length; i += 5) {
+    await Promise.all(targets.slice(i, i + 5).map((t) => syncCardEverywhere(t.cardId)));
+  }
+  return deliverWalletMessage(targets, BIRTHDAY_REMINDER_TITLE, BIRTHDAY_REMINDER_BODY);
 }

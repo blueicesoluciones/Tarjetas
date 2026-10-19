@@ -15,6 +15,7 @@ import {
   registerSuccess,
   type PinLockState,
 } from "@/lib/domain/lockout";
+import { BIRTHDAY_REMINDER_TITLE } from "@/lib/domain/birthday";
 import { normalizePhone, phoneFieldHint } from "@/lib/domain/phone";
 import { newAccessToken, newPublicCode } from "@/lib/domain/tokens";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -24,9 +25,6 @@ import type { z } from "zod";
 import type { changePinSchema, loginSchema, registerSchema, savedLoginSchema } from "./schemas";
 
 export const BCRYPT_COST = 10;
-
-/** Título del aviso de Wallet que pide el cumpleaños a los clientes ya inscritos. */
-export const BIRTHDAY_REMINDER_TITLE = "Actualiza tu información";
 
 // Hash de relleno para comparar cuando el teléfono no existe (tiempo de respuesta similar).
 const DUMMY_HASH = "$2b$10$49oNjZZZnIgvHylvDnHjuuF83mSW4KzQlNiVzmBZf6wn50fPQMy5G";
