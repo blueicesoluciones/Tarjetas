@@ -575,7 +575,7 @@ Endpoints del Web Service de Apple (bajo `/api/apple`, autenticación con encabe
 - `GET /v1/passes/{passTypeIdentifier}/{serialNumber}` → devuelve el `.pkpass` actualizado, soporta `If-Modified-Since`.
 - `POST /v1/log` → registra errores enviados por los dispositivos.
 
-Push: tras cada cambio, enviar notificación APNs vacía (`{}`) al `push_token` de cada registro de esa tarjeta, con topic = Pass Type ID, por HTTP/2 con JWT firmado con la clave `.p8` (runtime Node, no Edge).
+Push: tras cada cambio, enviar notificación APNs vacía (`{}`) al `push_token` de cada registro de esa tarjeta, con topic = Pass Type ID, por HTTP/2 autenticado con el **certificado del Pass Type ID** de ese pase (runtime Node, no Edge). La clave `.p8` no sirve para los identificadores de los negocios (APNs responde `TopicDisallowed`).
 
 Descarga: `GET /api/apple/pass/[accessToken]` devuelve el `.pkpass` con `Content-Type: application/vnd.apple.pkpass`.
 

@@ -100,3 +100,16 @@ export async function isKnownPassType(passTypeId: string): Promise<boolean> {
   if (passTypeId === config.passTypeId) return true;
   return passKeysSecret() ? (await rowBy("pass_type_id", passTypeId)) !== null : false;
 }
+
+/** Certificado y clave para conectarse a APNs con el topic de este identificador. */
+export async function pushCredentials(
+  passTypeId: string,
+): Promise<{ cert: string; key: string; passphrase?: string } | null> {
+  const config = appleConfig();
+  if (!config) return null;
+  const secret = passKeysSecret();
+  const row = secret ? await rowBy("pass_type_id", passTypeId) : null;
+  if (row?.cert_pem && secret) return { cert: row.cert_pem, key: decryptSecret(row.key_encrypted, secret) };
+  if (passTypeId !== config.passTypeId) return null;
+  return { cert: config.signerCert, key: config.signerKey, passphrase: config.signerKeyPassphrase };
+}
