@@ -817,9 +817,12 @@ Trabajar **una tarea a la vez**, con commit al terminar cada una. Cada fase tien
 | Panel | Información básica | Métricas detalladas | Métricas completas, gráficos y ranking |
 | «Te extrañamos» automático (cron diario) | — | — | ✓ |
 | Reporte mensual | — | — | ✓ |
+| Varias sedes (las crea el super admin; cajeros asignados a una sede; una sola tarjeta para todas; cada sello y canje guarda su sede; el dueño ve «Todas las sedes» o filtra resumen, actividad, reporte y equipo por sede) | — | — | ✓ |
 | Soporte | Correo | Correo | WhatsApp prioritario |
 
-Al bajar a un plan sin fondo con imagen, la tarjeta vuelve a color sólido.
+Al bajar a un plan sin fondo con imagen, la tarjeta vuelve a color sólido. Al bajar de Pro, las sedes se conservan en el historial pero se ocultan los selectores.
+
+**Multisede (tablas):** `branches` (business_id, name, address, is_active; se desactivan, no se borran), `profiles.branch_id` (solo cajeros) y `stamp_events.branch_id`. `add_stamp`, `redeem_reward` y `redeem_milestone` reciben `p_branch_id` opcional: al cajero se le pone siempre su sede; el dueño la elige en el escáner.
 
 ## 19. Pendientes por definir
 

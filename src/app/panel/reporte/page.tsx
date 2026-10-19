@@ -5,6 +5,7 @@ import { LockedFeature } from "@/components/panel/locked-feature";
 import { PageHeader } from "@/components/panel/page-header";
 import { getBusinessWithProgram } from "@/lib/auth/business";
 import { requireStaff } from "@/lib/auth/staff";
+import { branchesForPlan, selectedPanelBranch } from "@/lib/branches";
 import { localDateString } from "@/lib/panel/format";
 import { changeLabel, monthRange, type MonthRange } from "@/lib/panel/metrics";
 import { planFeatures } from "@/lib/plans";
@@ -20,10 +21,32 @@ interface MonthStats {
   returning: number;
 }
 
-async function monthStats(businessId: string, range: MonthRange): Promise<MonthStats> {
+/** Con `branchId`, sellos, canjes y visitas son de esa sede; los clientes nuevos, del negocio. */
+async function monthStats(businessId: string, range: MonthRange, branchId?: string): Promise<MonthStats> {
   const admin = createAdminClient();
   const from = range.start.toISOString();
   const to = range.end.toISOString();
+
+  let redemptionsQuery = admin
+    .from("stamp_events")
+    .select("id", { count: "exact", head: true })
+    .eq("business_id", businessId)
+    .eq("type", "redeem")
+    .is("undone_at", null)
+    .gte("created_at", from)
+    .lt("created_at", to);
+  let stampsQuery = admin
+    .from("stamp_events")
+    .select("card_id")
+    .eq("business_id", businessId)
+    .eq("type", "stamp")
+    .is("undone_at", null)
+    .gte("created_at", from)
+    .lt("created_at", to);
+  if (branchId) {
+    redemptionsQuery = redemptionsQuery.eq("branch_id", branchId);
+    stampsQuery = stampsQuery.eq("branch_id", branchId);
+  }
 
   const [newCustomers, redemptions, stampEvents] = await Promise.all([
     admin
@@ -32,24 +55,8 @@ async function monthStats(businessId: string, range: MonthRange): Promise<MonthS
       .eq("business_id", businessId)
       .gte("created_at", from)
       .lt("created_at", to),
-    admin
-      .from("stamp_events")
-      .select("id", { count: "exact", head: true })
-      .eq("business_id", businessId)
-      .eq("type", "redeem")
-      .is("undone_at", null)
-      .gte("created_at", from)
-      .lt("created_at", to),
-    admin
-      .from("stamp_events")
-      .select("card_id")
-      .eq("business_id", businessId)
-      .eq("type", "stamp")
-      .is("undone_at", null)
-      .gte("created_at", from)
-      .lt("created_at", to)
-      .limit(20000)
-      .returns<{ card_id: string }[]>(),
+    redemptionsQuery,
+    stampsQuery.limit(20000).returns<{ card_id: string }[]>(),
   ]);
 
   const visitors = [...new Set((stampEvents.data ?? []).map((e) => e.card_id))];
@@ -105,7 +112,12 @@ export default async function MonthlyReportPage({ searchParams }: PageProps<"/pa
   const currentKey = localDateString(new Date(), timeZone).slice(0, 7);
   const isCurrent = range.key === currentKey;
 
-  const [stats, prev] = await Promise.all([monthStats(businessId, range), monthStats(businessId, prevRange)]);
+  const branches = business ? await branchesForPlan(business.id, business.plan) : [];
+  const branch = await selectedPanelBranch(branches);
+  const [stats, prev] = await Promise.all([
+    monthStats(businessId, range, branch?.id),
+    monthStats(businessId, prevRange, branch?.id),
+  ]);
   const period = "el mes anterior";
 
   const rows: { label: string; value: number; previous: number; hint: string }[] = [
@@ -128,7 +140,14 @@ export default async function MonthlyReportPage({ searchParams }: PageProps<"/pa
 
   return (
     <>
-      <PageHeader title="Reporte mensual" description={business?.name} />
+      <PageHeader
+        title="Reporte mensual"
+        description={
+          branch
+            ? `${business?.name} · Sede ${branch.name} (los clientes nuevos son de todo el negocio)`
+            : business?.name
+        }
+      />
 
       <div className="mb-6 flex items-center gap-2 print:hidden">
         <Link

@@ -51,8 +51,16 @@ export function ProgramEditForm({ programId, defaults }: { programId: string; de
   );
 }
 
-export function CreateUserForm({ businessId }: { businessId: string }) {
+export function CreateUserForm({
+  businessId,
+  branches = [],
+}: {
+  businessId: string;
+  /** Sedes activas (multisede): el cajero queda asignado a una. */
+  branches?: { id: string; name: string }[];
+}) {
   const [state, action, pending] = useActionState<AdminFormState, FormData>(createBusinessUser.bind(null, businessId), {});
+  const [role, setRole] = useState("cashier");
   return (
     <form action={action} className="space-y-4" key={state.success ?? "form"}>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -61,11 +69,29 @@ export function CreateUserForm({ businessId }: { businessId: string }) {
         <Field label="Contraseña" name="password" type="text" required minLength={8} autoComplete="new-password" />
         <label className="space-y-2 text-sm">
           <span className="font-medium">Rol</span>
-          <select name="role" defaultValue="cashier" className="block h-9 w-full rounded-lg border bg-background px-2">
+          <select
+            name="role"
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            className="block h-9 w-full rounded-lg border bg-background px-2"
+          >
             <option value="cashier">Cajero</option>
             <option value="owner">Dueño</option>
           </select>
         </label>
+        {branches.length > 0 && role === "cashier" ? (
+          <label className="space-y-2 text-sm">
+            <span className="font-medium">Sede</span>
+            <select name="branchId" defaultValue="" className="block h-9 w-full rounded-lg border bg-background px-2">
+              <option value="">Sin sede</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
       </div>
       <FormStatus error={state.error} success={state.success} />
       <Button type="submit" variant="outline" disabled={pending}>

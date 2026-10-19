@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/panel/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getBusinessWithProgram } from "@/lib/auth/business";
 import { requireStaff } from "@/lib/auth/staff";
+import { branchesForPlan, selectedPanelBranch } from "@/lib/branches";
 import { listEvents } from "@/lib/panel/events";
 import { addDays, dayAndWeekStart, localDateString, startOfLocalDay } from "@/lib/panel/format";
 import { bestWeekday, bucketByLocalDay, changeLabel, lastNDays, percent } from "@/lib/panel/metrics";
@@ -32,6 +33,9 @@ export default async function PanelHomePage() {
   const level = planFeatures(business?.plan).metrics;
   const advanced = level !== "basic";
   const full = level === "full";
+  // Multisede: con una sede elegida, sellos, canjes, gráfico y actividad son de esa sede.
+  const branches = business ? await branchesForPlan(businessId, business.plan) : [];
+  const branch = await selectedPanelBranch(branches);
 
   const now = new Date();
   const { dayStart, weekStart } = dayAndWeekStart(timeZone, now);
@@ -51,6 +55,7 @@ export default async function PanelHomePage() {
       .eq("business_id", businessId)
       .eq("type", type)
       .is("undone_at", null);
+    if (branch) q = q.eq("branch_id", branch.id);
     if (from) q = q.gte("created_at", from.toISOString());
     if (to) q = q.lt("created_at", to.toISOString());
     return q;
@@ -69,13 +74,13 @@ export default async function PanelHomePage() {
     countCustomers(),
     countEvents("stamp", dayStart),
     program ? countCards().eq("program_id", program.id).gte("stamps_count", program.stamps_required) : Promise.resolve({ count: 0 }),
-    listEvents({ businessId, limit: 10 }),
+    listEvents({ businessId, branchId: branch?.id, limit: 10 }),
   ]);
   const totalCustomers = customers.count ?? 0;
 
   const basicTiles: Tile[] = [
     { label: "Clientes inscritos", value: totalCustomers },
-    { label: "Sellos hoy", value: stampsToday.count ?? 0 },
+    { label: branch ? `Sellos hoy en ${branch.name}` : "Sellos hoy", value: stampsToday.count ?? 0 },
     { label: "Premios por canjear", value: rewardReady.count ?? 0, hint: "Clientes con la tarjeta completa" },
   ];
 
@@ -138,13 +143,21 @@ export default async function PanelHomePage() {
 
   // ---- Pro ----
   let pro: Awaited<ReturnType<typeof loadProMetrics>> | null = null;
-  if (full) pro = await loadProMetrics(businessId, timeZone, chartStart, chartDays, thirtyDaysAgo, totalCustomers);
+  if (full) pro = await loadProMetrics(businessId, timeZone, chartStart, chartDays, thirtyDaysAgo, totalCustomers, branch?.id);
+  const byBranch =
+    branches.length > 0 && !branch ? await loadBranchComparison(businessId, branches, dayStart, weekStart, thirtyDaysAgo) : [];
 
   return (
     <>
       <PageHeader
         title="Resumen"
-        description={program ? `${program.card_title} · ${program.stamps_required} sellos → ${program.reward_description}` : undefined}
+        description={
+          branch
+            ? `Sede ${branch.name}: sellos, canjes, gráfico y actividad son de esta sede. Clientes, tarjetas y ranking son de todo el negocio.`
+            : program
+              ? `${program.card_title} · ${program.stamps_required} sellos → ${program.reward_description}`
+              : undefined
+        }
       />
 
       <TileGrid tiles={basicTiles} />
@@ -226,6 +239,44 @@ export default async function PanelHomePage() {
         />
       ) : null}
 
+      {byBranch.length > 0 ? (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Por sede</CardTitle>
+          </CardHeader>
+          <CardContent className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-left text-xs text-muted-foreground">
+                <tr className="border-b">
+                  <th className="py-2 pr-3 font-medium">Sede</th>
+                  <th className="py-2 pr-3 text-right font-medium">Sellos hoy</th>
+                  <th className="py-2 pr-3 text-right font-medium">Sellos semana</th>
+                  <th className="py-2 pr-3 text-right font-medium">Canjes semana</th>
+                  <th className="py-2 text-right font-medium">Sellos 30 días</th>
+                </tr>
+              </thead>
+              <tbody>
+                {byBranch.map((b) => (
+                  <tr key={b.id} className="border-b last:border-0">
+                    <td className="py-2 pr-3 font-medium">
+                      {b.name}
+                      {b.isActive ? "" : <span className="ml-1 text-xs text-muted-foreground">(inactiva)</span>}
+                    </td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{b.today}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{b.week}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{b.redeemWeek}</td>
+                    <td className="py-2 text-right tabular-nums">{b.month}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Elige una sede arriba para ver su resumen, actividad y equipo.
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card className="mt-6">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Actividad reciente</CardTitle>
@@ -234,7 +285,7 @@ export default async function PanelHomePage() {
           </Link>
         </CardHeader>
         <CardContent>
-          <EventsTable events={recent} timeZone={timeZone} />
+          <EventsTable events={recent} timeZone={timeZone} showBranch={branches.length > 0 && !branch} />
         </CardContent>
       </Card>
     </>
@@ -248,19 +299,19 @@ async function loadProMetrics(
   chartDays: string[],
   thirtyDaysAgo: Date,
   totalCustomers: number,
+  branchId?: string,
 ) {
   const admin = createAdminClient();
+  let chartQuery = admin
+    .from("stamp_events")
+    .select("created_at")
+    .eq("business_id", businessId)
+    .eq("type", "stamp")
+    .is("undone_at", null)
+    .gte("created_at", chartStart.toISOString());
+  if (branchId) chartQuery = chartQuery.eq("branch_id", branchId);
   const [events, top, returning, inactive, visitSum] = await Promise.all([
-    admin
-      .from("stamp_events")
-      .select("created_at")
-      .eq("business_id", businessId)
-      .eq("type", "stamp")
-      .is("undone_at", null)
-      .gte("created_at", chartStart.toISOString())
-      .order("created_at")
-      .limit(10000)
-      .returns<{ created_at: string }[]>(),
+    chartQuery.order("created_at").limit(10000).returns<{ created_at: string }[]>(),
     admin
       .from("cards")
       .select("id, total_stamps, total_redemptions, customers!inner(full_name, deleted_at)")
@@ -326,6 +377,41 @@ async function loadProMetrics(
       redemptions: c.total_redemptions,
     })),
   };
+}
+
+/** Sellos y canjes de cada sede (vista general). */
+async function loadBranchComparison(
+  businessId: string,
+  branches: { id: string; name: string; is_active: boolean }[],
+  dayStart: Date,
+  weekStart: Date,
+  thirtyDaysAgo: Date,
+) {
+  const since = new Date(Math.min(thirtyDaysAgo.getTime(), weekStart.getTime()));
+  const { data } = await createAdminClient()
+    .from("stamp_events")
+    .select("branch_id, type, created_at")
+    .eq("business_id", businessId)
+    .in("type", ["stamp", "redeem"])
+    .is("undone_at", null)
+    .not("branch_id", "is", null)
+    .gte("created_at", since.toISOString())
+    .limit(50000)
+    .returns<{ branch_id: string; type: "stamp" | "redeem"; created_at: string }[]>();
+  return branches.map((b) => {
+    const rows = (data ?? []).filter((e) => e.branch_id === b.id);
+    const at = (e: { created_at: string }) => new Date(e.created_at).getTime();
+    const stamps = rows.filter((e) => e.type === "stamp");
+    return {
+      id: b.id,
+      name: b.name,
+      isActive: b.is_active,
+      today: stamps.filter((e) => at(e) >= dayStart.getTime()).length,
+      week: stamps.filter((e) => at(e) >= weekStart.getTime()).length,
+      redeemWeek: rows.filter((e) => e.type === "redeem" && at(e) >= weekStart.getTime()).length,
+      month: stamps.filter((e) => at(e) >= thirtyDaysAgo.getTime()).length,
+    };
+  });
 }
 
 function TileGrid({ tiles }: { tiles: Tile[] }) {

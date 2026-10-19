@@ -25,7 +25,7 @@ export const getStaffContext = cache(async (): Promise<StaffContext | null> => {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, full_name, role, business_id, is_active, created_at")
+    .select("id, full_name, role, business_id, branch_id, is_active, created_at")
     .eq("id", user.id)
     .maybeSingle<Profile>();
 

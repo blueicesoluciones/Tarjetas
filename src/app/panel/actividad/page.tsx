@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getBusinessWithProgram } from "@/lib/auth/business";
 import { requireStaff } from "@/lib/auth/staff";
+import { branchesForPlan, selectedPanelBranch } from "@/lib/branches";
 import { listEvents } from "@/lib/panel/events";
 import { EVENT_LABELS, addDays, startOfLocalDay } from "@/lib/panel/format";
 import type { StampEventType } from "@/types/db";
@@ -21,6 +22,8 @@ export default async function ActivityPage({ searchParams }: PageProps<"/panel/a
   const ctx = await requireStaff(["owner"], { needsBusiness: true });
   const { business } = await getBusinessWithProgram(ctx.businessId!);
   const timeZone = business?.timezone ?? "UTC";
+  const branches = business ? await branchesForPlan(business.id, business.plan) : [];
+  const branch = await selectedPanelBranch(branches);
 
   const sp = await searchParams;
   const typeParam = typeof sp.tipo === "string" ? sp.tipo : "";
@@ -30,6 +33,7 @@ export default async function ActivityPage({ searchParams }: PageProps<"/panel/a
 
   const events = await listEvents({
     businessId: ctx.businessId!,
+    branchId: branch?.id,
     type,
     from: from ? startOfLocalDay(from, timeZone) : undefined,
     to: to ? startOfLocalDay(addDays(to, 1), timeZone) : undefined,
@@ -40,7 +44,14 @@ export default async function ActivityPage({ searchParams }: PageProps<"/panel/a
 
   return (
     <>
-      <PageHeader title="Actividad" description="Sellos, canjes y ajustes de tu negocio (últimos 100 según el filtro)." />
+      <PageHeader
+        title="Actividad"
+        description={
+          branch
+            ? `Sellos y canjes de la sede ${branch.name} (últimos 100 según el filtro). Los ajustes del panel no tienen sede.`
+            : "Sellos, canjes y ajustes de tu negocio (últimos 100 según el filtro)."
+        }
+      />
       <form className="mb-4 flex flex-wrap items-end gap-3">
         <div className="space-y-1">
           <Label htmlFor="tipo">Tipo</Label>
@@ -72,7 +83,12 @@ export default async function ActivityPage({ searchParams }: PageProps<"/panel/a
       </form>
       <Card>
         <CardContent>
-          <EventsTable events={events} timeZone={timeZone} emptyText="No hay movimientos con estos filtros." />
+          <EventsTable
+            events={events}
+            timeZone={timeZone}
+            showBranch={branches.length > 0 && !branch}
+            emptyText="No hay movimientos con estos filtros."
+          />
         </CardContent>
       </Card>
     </>

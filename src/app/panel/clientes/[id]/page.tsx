@@ -162,7 +162,12 @@ export default async function CustomerDetailPage({ params }: PageProps<"/panel/c
           <CardTitle>Historial</CardTitle>
         </CardHeader>
         <CardContent>
-          <EventsTable events={events} timeZone={timeZone} showCustomer={false} />
+          <EventsTable
+            events={events}
+            timeZone={timeZone}
+            showCustomer={false}
+            showBranch={events.some((e) => e.branchName)}
+          />
         </CardContent>
       </Card>
 

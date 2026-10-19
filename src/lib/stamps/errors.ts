@@ -21,6 +21,7 @@ const MESSAGES: Record<string, string> = {
   BUSINESS_REQUIRED: "Selecciona un negocio",
   MILESTONE_NOT_FOUND: "Este premio ya no existe en el programa",
   MILESTONE_ALREADY_CLAIMED: "Este premio ya fue entregado",
+  BRANCH_NOT_FOUND: "Esa sede no existe o está desactivada. Elige otra arriba.",
 };
 
 export interface StampError {

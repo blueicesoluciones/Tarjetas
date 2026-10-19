@@ -261,7 +261,19 @@ export async function createBusinessUser(businessId: string, _prev: AdminFormSta
     if (limit) return { error: limit };
   }
 
-  const result = await createStaffUser({ ...parsed.data, businessId: id });
+  const branchId = parsed.data.role === "cashier" ? String(formData.get("branchId") ?? "") : "";
+  if (branchId) {
+    const { data: branch } = await createAdminClient()
+      .from("branches")
+      .select("id")
+      .eq("id", branchId)
+      .eq("business_id", id)
+      .eq("is_active", true)
+      .maybeSingle();
+    if (!branch) return { error: "Elige una sede válida para el cajero" };
+  }
+
+  const result = await createStaffUser({ ...parsed.data, businessId: id, branchId: branchId || null });
   if (!result.ok) return { error: result.error };
 
   await writeAudit({
@@ -270,7 +282,7 @@ export async function createBusinessUser(businessId: string, _prev: AdminFormSta
     action: "staff.create",
     entityType: "profile",
     entityId: result.userId,
-    metadata: { role: parsed.data.role, email: parsed.data.email },
+    metadata: { role: parsed.data.role, email: parsed.data.email, branch_id: branchId || null },
   });
   revalidatePath(`/admin/negocios/${id}`);
   return { success: `Usuario creado. Puede ingresar en /login con ${parsed.data.email}.` };

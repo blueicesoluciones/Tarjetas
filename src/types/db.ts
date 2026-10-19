@@ -49,8 +49,20 @@ export interface Profile {
   full_name: string;
   role: StaffRole;
   business_id: string | null;
+  /** Sede del cajero (multisede, plan Pro). */
+  branch_id: string | null;
   is_active: boolean;
   created_at: string;
+}
+
+export interface Branch {
+  id: string;
+  business_id: string;
+  name: string;
+  address: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Customer {
@@ -106,6 +118,8 @@ export interface StampEvent {
   note: string | null;
   undone_at: string | null;
   undone_by: string | null;
+  /** Sede donde ocurrió (null si el negocio no usa sedes o fue un ajuste del panel). */
+  branch_id: string | null;
   created_at: string;
 }
 

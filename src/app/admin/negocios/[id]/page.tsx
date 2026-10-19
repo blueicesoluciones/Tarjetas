@@ -17,7 +17,9 @@ import { formatPhone } from "@/lib/domain/phone";
 import { planFeatures } from "@/lib/plans";
 import { appleConfig } from "@/lib/wallet/apple-config";
 import { suggestedPassTypeId } from "@/lib/wallet/apple-certs";
+import { listBranches } from "@/lib/branches";
 import { ApplePassForm, type ApplePassInfo } from "./apple-pass-form";
+import { BranchRow, CashierBranchSelect, CreateBranchForm } from "./branch-forms";
 import { BusinessEditForm, ChangePasswordForm, CreateUserForm, DeleteBusinessForm, ProgramEditForm } from "./forms";
 
 export const metadata: Metadata = { title: "Detalle del negocio" };
@@ -69,6 +71,9 @@ export default async function BusinessDetailPage({ params, searchParams }: PageP
       .eq("business_id", id)
       .maybeSingle<{ pass_type_id: string; csr_pem: string; cert_expires_at: string | null }>(),
   ]);
+  const branches = await listBranches(id);
+  const multiBranch = planFeatures(business?.plan).multiBranch;
+  const branchOptions = branches.map((b) => ({ id: b.id, name: b.name, isActive: b.is_active }));
   const apple = appleConfig();
   const sharedOwner = apple
     ? (
@@ -308,6 +313,46 @@ export default async function BusinessDetailPage({ params, searchParams }: PageP
 
       <Card>
         <CardHeader>
+          <CardTitle>Sedes</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 text-sm">
+          {multiBranch ? (
+            <>
+              <p className="text-muted-foreground">
+                Una sola tarjeta por cliente para todas las sedes. Cada cajero sella en su sede y el historial guarda dónde se
+                ganó cada sello. El dueño ve la vista general o elige una sede en su panel.
+              </p>
+              {branches.length > 0 ? (
+                <ul className="divide-y">
+                  {branches.map((b) => (
+                    <BranchRow
+                      key={b.id}
+                      branch={{
+                        id: b.id,
+                        name: b.name,
+                        address: b.address,
+                        isActive: b.is_active,
+                        cashiers: (staff ?? []).filter((p) => p.branch_id === b.id).length,
+                      }}
+                    />
+                  ))}
+                </ul>
+              ) : (
+                <p>Este negocio todavía no tiene sedes.</p>
+              )}
+              <CreateBranchForm businessId={business.id} />
+            </>
+          ) : (
+            <p className="text-muted-foreground">
+              Varias sedes está disponible en el plan Pro. Cambia el plan en «Datos del negocio» para crear sedes.
+              {branches.length > 0 ? ` Sus ${branches.length} sedes anteriores se conservan en el historial.` : ""}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Equipo</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -323,6 +368,9 @@ export default async function BusinessDetailPage({ params, searchParams }: PageP
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="outline">{ROLE_LABELS[p.role]}</Badge>
+                    {multiBranch && branches.length > 0 && p.role === "cashier" ? (
+                      <CashierBranchSelect userId={p.id} branchId={p.branch_id} branches={branchOptions} />
+                    ) : null}
                     <ChangePasswordForm userId={p.id} />
                     <form action={setUserActive}>
                       <input type="hidden" name="userId" value={p.id} />
@@ -350,7 +398,10 @@ export default async function BusinessDetailPage({ params, searchParams }: PageP
             <p className="mb-3 text-xs text-muted-foreground">
               Entrégale el email y la contraseña a la persona. Ingresa en /login y la app la lleva a su panel o al escáner según su rol.
             </p>
-            <CreateUserForm businessId={business.id} />
+            <CreateUserForm
+              businessId={business.id}
+              branches={multiBranch ? branches.filter((b) => b.is_active).map((b) => ({ id: b.id, name: b.name })) : []}
+            />
           </div>
         </CardContent>
       </Card>

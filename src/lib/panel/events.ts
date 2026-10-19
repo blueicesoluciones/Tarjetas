@@ -14,6 +14,8 @@ export interface EventRow {
   customerId: string | null;
   customerName: string;
   performerName: string | null;
+  /** Sede donde ocurrió (multisede). */
+  branchName: string | null;
 }
 
 interface RawEvent {
@@ -27,14 +29,17 @@ interface RawEvent {
   card_id: string;
   cards: { customer_id: string; customers: { full_name: string } | null } | null;
   performer: { full_name: string } | null;
+  branch: { name: string } | null;
 }
 
 const EVENT_SELECT =
-  "id, type, delta, stamps_after, note, undone_at, created_at, card_id, cards(customer_id, customers(full_name)), performer:profiles!stamp_events_performed_by_fkey(full_name)";
+  "id, type, delta, stamps_after, note, undone_at, created_at, card_id, cards(customer_id, customers(full_name)), performer:profiles!stamp_events_performed_by_fkey(full_name), branch:branches(name)";
 
 export interface EventFilters {
   businessId: string;
   cardId?: string;
+  /** Solo movimientos de esta sede. */
+  branchId?: string;
   type?: StampEventType;
   from?: Date;
   to?: Date;
@@ -51,6 +56,7 @@ export async function listEvents(filters: EventFilters): Promise<EventRow[]> {
     .order("created_at", { ascending: false })
     .limit(filters.limit ?? 100);
   if (filters.cardId) query = query.eq("card_id", filters.cardId);
+  if (filters.branchId) query = query.eq("branch_id", filters.branchId);
   if (filters.type) query = query.eq("type", filters.type);
   if (filters.from) query = query.gte("created_at", filters.from.toISOString());
   if (filters.to) query = query.lt("created_at", filters.to.toISOString());
@@ -72,5 +78,6 @@ export async function listEvents(filters: EventFilters): Promise<EventRow[]> {
     customerId: e.cards?.customer_id ?? null,
     customerName: e.cards?.customers?.full_name ?? "—",
     performerName: e.performer?.full_name ?? null,
+    branchName: e.branch?.name ?? null,
   }));
 }

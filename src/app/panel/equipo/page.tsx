@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getBusinessWithProgram } from "@/lib/auth/business";
 import { requireStaff } from "@/lib/auth/staff";
+import { branchNames, branchesForPlan, selectedPanelBranch } from "@/lib/branches";
 import { formatDate } from "@/lib/panel/format";
 import { planFeatures } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
@@ -25,19 +26,31 @@ export default async function TeamPage() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("profiles")
-    .select("id, full_name, role, business_id, is_active, created_at")
+    .select("id, full_name, role, business_id, branch_id, is_active, created_at")
     .eq("business_id", ctx.businessId!)
     .order("role")
     .order("full_name")
     .returns<Profile[]>();
-  const staff = data ?? [];
+  const branches = business ? await branchesForPlan(business.id, business.plan) : [];
+  const branch = await selectedPanelBranch(branches);
+  const names = branchNames(branches);
+  // Con una sede elegida: el dueño y los cajeros de esa sede.
+  const allStaff = data ?? [];
+  const staff = branch ? allStaff.filter((p) => p.role !== "cashier" || p.branch_id === branch.id) : allStaff;
   const plan = planFeatures(business?.plan);
-  const activeCashiers = staff.filter((p) => p.role === "cashier" && p.is_active).length;
+  const activeCashiers = allStaff.filter((p) => p.role === "cashier" && p.is_active).length;
   const atLimit = plan.maxCashiers !== null && activeCashiers >= plan.maxCashiers;
 
   return (
     <>
-      <PageHeader title="Equipo" description="Personas que pueden sumar sellos en tu negocio." />
+      <PageHeader
+        title="Equipo"
+        description={
+          branch
+            ? `Cajeros de la sede ${branch.name}.`
+            : "Personas que pueden sumar sellos en tu negocio."
+        }
+      />
       <div className="space-y-4">
         <Card>
           <CardContent>
@@ -46,6 +59,7 @@ export default async function TeamPage() {
                 <TableRow>
                   <TableHead>Nombre</TableHead>
                   <TableHead>Rol</TableHead>
+                  {branches.length > 0 ? <TableHead>Sede</TableHead> : null}
                   <TableHead>Desde</TableHead>
                   <TableHead className="text-right">Estado</TableHead>
                 </TableRow>
@@ -58,6 +72,11 @@ export default async function TeamPage() {
                       {p.id === ctx.userId ? <span className="text-muted-foreground ml-1">(tú)</span> : null}
                     </TableCell>
                     <TableCell>{ROLE_LABEL[p.role]}</TableCell>
+                    {branches.length > 0 ? (
+                      <TableCell className="text-muted-foreground">
+                        {p.role === "cashier" ? (p.branch_id ? names.get(p.branch_id) : "Sin sede") : "Todas"}
+                      </TableCell>
+                    ) : null}
                     <TableCell className="text-muted-foreground">
                       {formatDate(p.created_at, timeZone)}
                     </TableCell>
@@ -116,7 +135,7 @@ export default async function TeamPage() {
           ) : null}
         </p>
         <p className="text-muted-foreground text-sm">
-          Para agregar un cajero o cambiar una contraseña, pídeselo al administrador de la plataforma.
+          Para agregar un cajero, cambiarlo de sede o cambiar una contraseña, pídeselo al administrador de la plataforma.
         </p>
       </div>
     </>

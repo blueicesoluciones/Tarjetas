@@ -10,5 +10,5 @@ export async function POST(request: Request, ctx: RouteContext<"/api/staff/cards
   if (!UUID_RE.test(cardRef)) return jsonError("Tarjeta inválida", 400);
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return jsonError("Premio inválido", 400);
-  return runCardRpc("redeem_milestone", { p_card_id: cardRef, p_stamps_at: parsed.data.stampsAt }, { sync: {} });
+  return runCardRpc("redeem_milestone", { p_card_id: cardRef, p_stamps_at: parsed.data.stampsAt }, { withBranch: true, sync: {} });
 }

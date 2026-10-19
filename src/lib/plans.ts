@@ -25,6 +25,8 @@ export interface PlanFeatures {
   winback: boolean;
   /** Reporte mensual en el panel. */
   monthlyReport: boolean;
+  /** Varias sedes con cajeros asignados y filtro por sede en el panel. */
+  multiBranch: boolean;
   /** Canal de soporte. */
   support: "email" | "whatsapp";
 }
@@ -40,6 +42,7 @@ export const PLANS: Record<Plan, PlanFeatures> = {
     metrics: "basic",
     winback: false,
     monthlyReport: false,
+    multiBranch: false,
     support: "email",
   },
   medium: {
@@ -52,6 +55,7 @@ export const PLANS: Record<Plan, PlanFeatures> = {
     metrics: "advanced",
     winback: false,
     monthlyReport: false,
+    multiBranch: false,
     support: "email",
   },
   pro: {
@@ -64,6 +68,7 @@ export const PLANS: Record<Plan, PlanFeatures> = {
     metrics: "full",
     winback: true,
     monthlyReport: true,
+    multiBranch: true,
     support: "whatsapp",
   },
 };
@@ -109,6 +114,7 @@ export function planHighlights(plan: Plan): string[] {
     f.metrics === "basic" ? "Panel con información básica" : f.metrics === "advanced" ? "Métricas detalladas" : "Métricas completas y gráficos",
     f.winback ? 'Aviso automático "Te extrañamos"' : "",
     f.monthlyReport ? "Reporte mensual" : "",
+    f.multiBranch ? "Varias sedes, con cajeros por sede y métricas de cada una" : "",
     f.support === "whatsapp" ? "Soporte prioritario por WhatsApp" : "Soporte por correo",
   ].filter(Boolean);
 }

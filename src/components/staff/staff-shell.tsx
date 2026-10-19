@@ -12,10 +12,12 @@ interface StaffShellProps {
   userName: string;
   nav: NavItem[];
   impersonatingName?: string | null;
+  /** Barra bajo el encabezado (ej. selector de sede). */
+  toolbar?: React.ReactNode;
   children: React.ReactNode;
 }
 
-export function StaffShell({ title, homeHref, userName, nav, impersonatingName, children }: StaffShellProps) {
+export function StaffShell({ title, homeHref, userName, nav, impersonatingName, toolbar, children }: StaffShellProps) {
   return (
     <div className="flex min-h-dvh flex-col">
       {impersonatingName ? (
@@ -48,6 +50,11 @@ export function StaffShell({ title, homeHref, userName, nav, impersonatingName, 
           </div>
         </div>
       </header>
+      {toolbar ? (
+        <div className="border-b bg-muted/40">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-2">{toolbar}</div>
+        </div>
+      ) : null}
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
     </div>
   );

@@ -3,7 +3,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(35);
+select plan(44);
 
 -- Helper: actuar como un usuario autenticado
 create or replace function pg_temp.act_as(p_uid uuid) returns void language plpgsql as $$
@@ -160,6 +160,64 @@ select is(
 select throws_ok(
   $$ select public.redeem_milestone('11111111-0000-0000-0000-0000000ca002', 5) $$,
   'P0001', 'MILESTONE_NOT_FOUND', 'plan Standard no entrega premios intermedios'
+);
+
+-- ---------------------------------------------------------------------------
+-- Multisede (Pro): cada movimiento guarda su sede
+-- ---------------------------------------------------------------------------
+reset role;
+update public.businesses set plan = 'pro' where id = '11111111-1111-1111-1111-111111111111';
+insert into public.branches (id, business_id, name) values
+  ('11111111-bbbb-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'Centro'),
+  ('22222222-bbbb-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222', 'Sol Norte');
+update public.profiles set branch_id = '11111111-bbbb-0000-0000-000000000001' where id = '00000000-0000-0000-0000-00000000a002';
+update public.cards set last_stamp_at = null where id = '11111111-0000-0000-0000-0000000ca001';
+
+select pg_temp.act_as('00000000-0000-0000-0000-00000000a002');
+select is((select count(*)::int from public.branches), 1, 'el staff ve solo las sedes de su negocio');
+select lives_ok(
+  $$ select set_config('test.event_id', public.add_stamp('LUNACAMILA000001', '22222222-bbbb-0000-0000-000000000001') ->> 'event_id', false) $$,
+  'el cajero suma un sello'
+);
+select is(
+  (select branch_id from public.stamp_events where id = current_setting('test.event_id')::uuid),
+  '11111111-bbbb-0000-0000-000000000001'::uuid,
+  'el sello del cajero queda en su sede (no puede elegir otra)'
+);
+
+reset role;
+update public.cards set last_stamp_at = null where id = '11111111-0000-0000-0000-0000000ca001';
+select pg_temp.act_as('00000000-0000-0000-0000-00000000a001');
+select throws_ok(
+  $$ select public.add_stamp('LUNACAMILA000001', '22222222-bbbb-0000-0000-000000000001') $$,
+  'P0001', 'BRANCH_NOT_FOUND', 'el dueño no puede sellar con la sede de otro negocio'
+);
+select lives_ok(
+  $$ select set_config('test.event_id', public.add_stamp('LUNACAMILA000001', '11111111-bbbb-0000-0000-000000000001') ->> 'event_id', false) $$,
+  'el dueño suma un sello'
+);
+select is(
+  (select branch_id from public.stamp_events where id = current_setting('test.event_id')::uuid),
+  '11111111-bbbb-0000-0000-000000000001'::uuid,
+  'el dueño sella indicando la sede'
+);
+-- En la transacción todo tiene la misma hora: el sello del dueño debe quedar como el último.
+reset role;
+update public.stamp_events set created_at = created_at - interval '1 minute'
+ where card_id = '11111111-0000-0000-0000-0000000ca001' and id <> current_setting('test.event_id')::uuid;
+select pg_temp.act_as('00000000-0000-0000-0000-00000000a001');
+select lives_ok(
+  $$ select set_config('test.event_id', public.undo_stamp_event(current_setting('test.event_id')::uuid) ->> 'event_id', false) $$,
+  'el dueño deshace el sello'
+);
+select is(
+  (select branch_id from public.stamp_events where id = current_setting('test.event_id')::uuid),
+  '11111111-bbbb-0000-0000-000000000001'::uuid,
+  'deshacer queda en la misma sede del sello'
+);
+select throws_ok(
+  $$ insert into public.branches (business_id, name) values ('11111111-1111-1111-1111-111111111111', 'x') $$,
+  '42501', null, 'el dueño no crea sedes directamente'
 );
 
 -- ---------------------------------------------------------------------------

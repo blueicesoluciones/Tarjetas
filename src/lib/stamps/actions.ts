@@ -1,6 +1,7 @@
 import "server-only";
 import { after, NextResponse } from "next/server";
 import { staffForApi } from "@/lib/auth/staff";
+import { scannerBranchId } from "@/lib/branches";
 import { jsonError } from "@/lib/http/json";
 import { createClient } from "@/lib/supabase/server";
 import { syncCardEverywhere } from "@/lib/wallet";
@@ -21,6 +22,8 @@ export async function runCardRpc(
   args: Record<string, unknown>,
   opts: {
     roles?: StaffRole[];
+    /** Enviar la sede del escáner (sellos y canjes). */
+    withBranch?: boolean;
     /** Sincronizar Wallet. `notifyFrom` da el conteo previo para decidir si notificar. */
     sync?: { notifyFrom?: (state: CardState) => number | null };
   } = {},
@@ -29,7 +32,8 @@ export async function runCardRpc(
   if (!ctx) return jsonError("No autorizado", 401);
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc(fn, args);
+  const branchId = opts.withBranch ? await scannerBranchId(ctx.businessId, ctx.profile.role) : null;
+  const { data, error } = await supabase.rpc(fn, branchId ? { ...args, p_branch_id: branchId } : args);
   if (error) {
     const e = translateDbError(error);
     if (e.code === "UNKNOWN") console.error(`[rpc:${fn}]`, error.message);

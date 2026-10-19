@@ -16,7 +16,11 @@ export const staffUserSchema = z.object({
   role: z.enum(["owner", "cashier"]),
 });
 
-export type StaffUserInput = z.output<typeof staffUserSchema> & { businessId: string };
+export type StaffUserInput = z.output<typeof staffUserSchema> & {
+  businessId: string;
+  /** Sede del cajero (multisede). */
+  branchId?: string | null;
+};
 
 export type StaffUserResult = { ok: true; userId: string } | { ok: false; error: string };
 
@@ -38,6 +42,7 @@ export async function createStaffUser(input: StaffUserInput): Promise<StaffUserR
     full_name: input.full_name,
     role: input.role satisfies Exclude<StaffRole, "super_admin">,
     business_id: input.businessId,
+    branch_id: input.role === "cashier" ? (input.branchId ?? null) : null,
   });
   if (profileError) {
     await admin.auth.admin.deleteUser(data.user.id);

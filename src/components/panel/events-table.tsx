@@ -8,10 +8,18 @@ interface Props {
   events: EventRow[];
   timeZone: string;
   showCustomer?: boolean;
+  /** Columna «Sede» (negocios con varias sedes). */
+  showBranch?: boolean;
   emptyText?: string;
 }
 
-export function EventsTable({ events, timeZone, showCustomer = true, emptyText = "Sin movimientos todavía." }: Props) {
+export function EventsTable({
+  events,
+  timeZone,
+  showCustomer = true,
+  showBranch = false,
+  emptyText = "Sin movimientos todavía.",
+}: Props) {
   if (events.length === 0) {
     return <p className="py-6 text-center text-sm text-muted-foreground">{emptyText}</p>;
   }
@@ -24,6 +32,7 @@ export function EventsTable({ events, timeZone, showCustomer = true, emptyText =
           <TableHead>Tipo</TableHead>
           <TableHead className="text-right">Cambio</TableHead>
           <TableHead className="text-right">Sellos</TableHead>
+          {showBranch ? <TableHead>Sede</TableHead> : null}
           <TableHead>Por</TableHead>
           <TableHead>Nota</TableHead>
         </TableRow>
@@ -55,6 +64,7 @@ export function EventsTable({ events, timeZone, showCustomer = true, emptyText =
               {formatDelta(e.delta)}
             </TableCell>
             <TableCell className="text-right tabular-nums">{e.stamps_after}</TableCell>
+            {showBranch ? <TableCell className="whitespace-nowrap">{e.branchName ?? "—"}</TableCell> : null}
             <TableCell className="whitespace-nowrap">{e.performerName ?? "—"}</TableCell>
             <TableCell className="max-w-56 truncate" title={e.note ?? undefined}>
               {e.note ?? ""}
