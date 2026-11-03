@@ -60,6 +60,8 @@ export interface Branch {
   business_id: string;
   name: string;
   address: string | null;
+  /** Logo redondo de la sede (PNG); se ve dentro de cada sello puesto en ella. */
+  logo_url: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;

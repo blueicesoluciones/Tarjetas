@@ -369,6 +369,10 @@ export default async function BusinessDetailPage({ params, searchParams }: PageP
                 Una sola tarjeta por cliente para todas las sedes. Cada cajero sella en su sede y el historial guarda dónde se
                 ganó cada sello. El dueño ve la vista general o elige una sede en su panel.
               </p>
+              <p className="text-muted-foreground">
+                Si una sede tiene logo, cada sello puesto en ella muestra ese logo en la tarjeta (web, Google y Apple Wallet). Los
+                sellos sin sede o de sedes sin logo se ven con el chulo de siempre.
+              </p>
               {branches.length > 0 ? (
                 <ul className="divide-y">
                   {branches.map((b) => (
@@ -379,6 +383,7 @@ export default async function BusinessDetailPage({ params, searchParams }: PageP
                         name: b.name,
                         address: b.address,
                         isActive: b.is_active,
+                        logoUrl: b.logo_url,
                         cashiers: (staff ?? []).filter((p) => p.branch_id === b.id).length,
                       }}
                     />

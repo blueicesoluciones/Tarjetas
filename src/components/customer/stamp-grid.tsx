@@ -10,6 +10,7 @@ export function StampGrid({
   primaryColor,
   textColor,
   milestones = [],
+  logos,
 }: {
   count: number;
   required: number;
@@ -17,6 +18,8 @@ export function StampGrid({
   textColor: string;
   /** Sellos en los que hay premio intermedio (se marcan con un regalo). */
   milestones?: number[];
+  /** Multisede: logo de la sede de cada sello puesto (null = chulo). */
+  logos?: (string | null)[] | null;
 }) {
   const { cols } = stampGrid(required);
   return (
@@ -28,13 +31,17 @@ export function StampGrid({
     >
       {Array.from({ length: required }, (_, i) => {
         const on = i < count;
+        const logo = on ? logos?.[i] : null;
         return (
           <span
             key={i}
             className="flex aspect-square items-center justify-center rounded-full border-2"
             style={{ borderColor: textColor, backgroundColor: on ? textColor : "transparent", opacity: on ? 1 : 0.55 }}
           >
-            {on ? (
+            {logo ? (
+              // eslint-disable-next-line @next/next/no-img-element -- logo de la sede, ya redondo
+              <img src={logo} alt="" className="size-full rounded-full object-cover" />
+            ) : on ? (
               <svg viewBox="0 0 24 24" className="size-[55%]" aria-hidden>
                 <path d="M4 12.5l5 5L20 6.5" fill="none" stroke={primaryColor} strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round" />
               </svg>

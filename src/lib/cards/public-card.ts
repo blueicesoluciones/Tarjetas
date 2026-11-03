@@ -4,6 +4,7 @@ import type { Plan } from "@/lib/plans";
 import { milestoneStatuses, type MilestoneStatus } from "@/lib/rewards";
 import { getProgramMilestones } from "@/lib/rewards-server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { cardStampLogos } from "./stamp-logos";
 
 export interface PublicCardView {
   id: string;
@@ -15,6 +16,8 @@ export interface PublicCardView {
   customerName: string;
   /** Inscrito antes de pedir el cumpleaños: la tarjeta web le pide completarlo. */
   needsBirthday: boolean;
+  /** Multisede: logo de la sede de cada sello (null = chulo de siempre). */
+  stampLogos: (string | null)[] | null;
   /** Premios intermedios del ciclo actual (vacío si el plan no los incluye). */
   milestones: MilestoneStatus[];
   program: {
@@ -70,7 +73,10 @@ export const getCardByAccessToken = cache(async (accessToken: string): Promise<P
     .eq("access_token", accessToken)
     .maybeSingle<Row>();
   if (!data || data.customers.deleted_at) return null;
-  const milestones = await getProgramMilestones(data.programs.id, data.businesses.plan, data.programs.stamps_required);
+  const [milestones, stampLogos] = await Promise.all([
+    getProgramMilestones(data.programs.id, data.businesses.plan, data.programs.stamps_required),
+    cardStampLogos({ id: data.id, businessId: data.businesses.id, stampsCount: data.stamps_count, plan: data.businesses.plan }),
+  ]);
 
   return {
     id: data.id,
@@ -81,6 +87,7 @@ export const getCardByAccessToken = cache(async (accessToken: string): Promise<P
     status: data.status,
     customerName: data.customers.full_name,
     needsBirthday: data.customers.birth_month === null,
+    stampLogos,
     milestones: milestoneStatuses(milestones, data.stamps_count, data.claimed_milestones ?? []),
     program: {
       id: data.programs.id,

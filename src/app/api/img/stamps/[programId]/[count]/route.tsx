@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 import { BACKGROUND_OVERLAY_ALPHA } from "@/lib/cards/card-style";
 import { GIFT_ICON_PATHS, stampGrid } from "@/lib/cards/stamp-layout";
+import { cardStampLogos } from "@/lib/cards/stamp-logos";
 import type { Plan } from "@/lib/plans";
 import { getProgramMilestones } from "@/lib/rewards-server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -13,23 +14,69 @@ const SIZES = { google: { width: 1032, height: 336 }, apple: { width: 1125, heig
  * Imagen de sellos: hero de Google Wallet y strip de Apple (CLAUDE.md §10.1).
  * La URL cambia con el conteo y design_version, así que se cachea inmutable.
  */
+/**
+ * Descarga los logos de las sedes y los pasa como data URI: si uno falla, ese
+ * sello se dibuja con el chulo en vez de romper toda la imagen.
+ */
+async function logoDataUris(logos: (string | null)[]): Promise<(string | null)[]> {
+  const unique = [...new Set(logos.filter((l): l is string => Boolean(l)))];
+  const loaded = new Map<string, string | null>();
+  await Promise.all(
+    unique.map(async (url) => {
+      try {
+        const res = await fetch(url);
+        const type = res.headers.get("content-type") ?? "";
+        if (!res.ok || !type.startsWith("image/")) throw new Error(`HTTP ${res.status}`);
+        loaded.set(url, `data:${type};base64,${Buffer.from(await res.arrayBuffer()).toString("base64")}`);
+      } catch (err) {
+        console.error("[stamps] logo de sede", url, err instanceof Error ? err.message : err);
+        loaded.set(url, null);
+      }
+    }),
+  );
+  return logos.map((l) => (l ? (loaded.get(l) ?? null) : null));
+}
+
 export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[programId]/[count]">) {
   const { programId, count: countParam } = await ctx.params;
-  const { width: WIDTH, height: HEIGHT } = SIZES[new URL(request.url).searchParams.get("f") === "apple" ? "apple" : "google"];
+  const params = new URL(request.url).searchParams;
+  const { width: WIDTH, height: HEIGHT } = SIZES[params.get("f") === "apple" ? "apple" : "google"];
+  const cardId = params.get("c");
   const count = Number(countParam);
-  if (!/^[0-9a-f-]{36}$/i.test(programId) || !Number.isInteger(count) || count < 0 || count > 1000) {
+  if (
+    !/^[0-9a-f-]{36}$/i.test(programId) ||
+    !Number.isInteger(count) ||
+    count < 0 ||
+    count > 1000 ||
+    (cardId !== null && !/^[0-9a-f-]{36}$/i.test(cardId))
+  ) {
     return new Response("Not found", { status: 404 });
   }
 
   const { data: program } = await createAdminClient()
     .from("programs")
-    .select("stamps_required, businesses(primary_color, text_color, card_background_url, plan)")
+    .select("stamps_required, business_id, businesses(primary_color, text_color, card_background_url, plan)")
     .eq("id", programId)
     .maybeSingle<{
       stamps_required: number;
+      business_id: string;
       businesses: { primary_color: string; text_color: string; card_background_url: string | null; plan: Plan };
     }>();
   if (!program) return new Response("Not found", { status: 404 });
+
+  // Multisede: imagen de una tarjeta con el logo de la sede en cada sello.
+  let logos: (string | null)[] = [];
+  if (cardId) {
+    const { data: card } = await createAdminClient()
+      .from("cards")
+      .select("id")
+      .eq("id", cardId)
+      .eq("program_id", programId)
+      .maybeSingle<{ id: string }>();
+    if (!card) return new Response("Not found", { status: 404 });
+    const urls = await cardStampLogos({ id: card.id, businessId: program.business_id, stampsCount: count, plan: program.businesses.plan });
+    if (urls) logos = await logoDataUris(urls);
+  }
 
   const required = program.stamps_required;
   const milestones = (await getProgramMilestones(programId, program.businesses.plan, required)).map((m) => m.stampsAt);
@@ -51,6 +98,7 @@ export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[
     ),
   );
 
+  const border = Math.max(3, Math.round(size / 18));
   const circles = Array.from({ length: required }, (_, i) => i < filled);
   const grid = Array.from({ length: rows }, (_, r) => circles.slice(r * cols, (r + 1) * cols));
 
@@ -121,12 +169,21 @@ export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    border: `${Math.max(3, Math.round(size / 18))}px solid ${fg}`,
+                    border: `${border}px solid ${fg}`,
                     backgroundColor: on ? fg : "transparent",
                     opacity: on ? 1 : 0.55,
                   }}
                 >
-                  {on ? (
+                  {on && logos[r * cols + i] ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- Satori solo entiende <img>
+                    <img
+                      src={logos[r * cols + i]!}
+                      alt=""
+                      width={size - border * 2}
+                      height={size - border * 2}
+                      style={{ width: size - border * 2, height: size - border * 2, borderRadius: size, objectFit: "cover" }}
+                    />
+                  ) : on ? (
                     <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24">
                       <path d="M4 12.5l5 5L20 6.5" fill="none" stroke={bg} strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round" />
                     </svg>

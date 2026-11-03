@@ -1,5 +1,6 @@
 import "server-only";
 import { appUrl } from "@/lib/env";
+import { cardStampLogos, stampLogosKey } from "@/lib/cards/stamp-logos";
 import { encodeCardQr } from "@/lib/domain/qr";
 import type { Plan } from "@/lib/plans";
 import { milestoneStatuses, reachedMilestone } from "@/lib/rewards";
@@ -21,9 +22,20 @@ function enabledProviders() {
  */
 const STAMPS_IMAGE_RENDER = 3;
 
-export function stampsImageUrl(programId: string, count: number, designVersion: number, format: "google" | "apple" = "google") {
+/**
+ * Con `logos` (multisede con logos por sede) la imagen es de la tarjeta: lleva su
+ * id y una huella de los logos, así cambia la URL cuando cambia algún sello.
+ */
+export function stampsImageUrl(
+  programId: string,
+  count: number,
+  designVersion: number,
+  format: "google" | "apple" = "google",
+  logos?: { cardId: string; key: string },
+) {
   const f = format === "apple" ? "&f=apple" : "";
-  return appUrl(`/api/img/stamps/${programId}/${count}?v=${designVersion}-r${STAMPS_IMAGE_RENDER}${f}`);
+  const c = logos ? `&c=${logos.cardId}&h=${logos.key}` : "";
+  return appUrl(`/api/img/stamps/${programId}/${count}?v=${designVersion}-r${STAMPS_IMAGE_RENDER}${c}${f}`);
 }
 
 /** Google exige un logo: si el negocio no subió uno, se genera con su inicial. */
@@ -61,7 +73,10 @@ export async function loadWalletCardData(cardId: string): Promise<WalletCardData
     .eq("id", cardId)
     .maybeSingle<CardRow>();
   if (!data) return null;
-  const milestones = await getProgramMilestones(data.program_id, data.businesses.plan, data.programs.stamps_required);
+  const [milestones, stampLogos] = await Promise.all([
+    getProgramMilestones(data.program_id, data.businesses.plan, data.programs.stamps_required),
+    cardStampLogos({ id: data.id, businessId: data.business_id, stampsCount: data.stamps_count, plan: data.businesses.plan }),
+  ]);
 
   return {
     cardId: data.id,
@@ -80,7 +95,13 @@ export async function loadWalletCardData(cardId: string): Promise<WalletCardData
     logoUrl: logoOrFallback(data.businesses.logo_url, data.program_id),
     primaryColor: data.businesses.primary_color,
     textColor: data.businesses.text_color,
-    stampsImageUrl: stampsImageUrl(data.program_id, data.stamps_count, data.programs.design_version),
+    stampsImageUrl: stampsImageUrl(
+      data.program_id,
+      data.stamps_count,
+      data.programs.design_version,
+      "google",
+      stampLogos ? { cardId: data.id, key: stampLogosKey(stampLogos) } : undefined,
+    ),
     webCardUrl: appUrl(`/t/${data.access_token}`),
     googleObjectId: data.google_object_id,
     appleSerialNumber: data.apple_serial_number,
