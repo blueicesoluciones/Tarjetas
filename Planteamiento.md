@@ -650,6 +650,7 @@ src/app/
     apple/...                                 # stubs (sección 12)
 ```
 
+- **Navegación del panel:** menú lateral agrupado (Resumen · Clientes: Clientes, Actividad · Tu tarjeta: Programa, Compartir, Campañas · Tu negocio: Reporte, Equipo, Mi plan) con el botón «Abrir escáner» y el selector de sede; en el celular el mismo menú se abre desde la barra superior. Programa se divide en pestañas por `?seccion=`: Tarjeta y marca, Premios en el camino, Aviso «Te extrañamos» y Logos de sedes.
 - Middleware (`middleware.ts`): refresca la sesión de Supabase y protege `/admin`, `/panel`, `/escaner` según rol. `/n/*`, `/t/*` y `/api/customers/*` son públicos (con sus propias validaciones).
 - **Modo "ver como":** el super_admin elige un negocio en `/admin/negocios/[id]`; se guarda una cookie httpOnly `acting_business_id`, validada en servidor solo si el usuario es super_admin. `/panel` y `/escaner` usan ese negocio y muestran un banner fijo "Estás viendo como [negocio] — Salir". Acciones registradas en auditoría con `impersonating: true`.
 
@@ -826,7 +827,7 @@ Al bajar a un plan sin fondo con imagen, la tarjeta vuelve a color sólido. Al b
 
 **Multisede (tablas):** `branches` (business_id, name, address, logo_url, is_active; se desactivan, no se borran), `profiles.branch_id` (solo cajeros) y `stamp_events.branch_id`. `add_stamp`, `redeem_reward` y `redeem_milestone` reciben `p_branch_id` opcional: al cajero se le pone siempre su sede; el dueño la elige en el escáner.
 
-**Logo por sede:** el super admin sube un logo a cada sede (se guarda recortado en círculo, PNG 256 px). Cada sello del ciclo actual muestra el logo de la sede donde se puso (tarjeta web e imagen de sellos de Google y Apple Wallet); los sellos sin sede o de sedes sin logo llevan el chulo. La sede de cada sello se reconstruye del historial (`src/lib/cards/stamp-branches.ts`); con logos, la imagen de sellos es por tarjeta (`?c=<cardId>&h=<huella>`). Se recomienda un ícono simple, no un logo con texto.
+**Logo por sede:** el super admin (detalle del negocio → Sedes) o el dueño (Programa → «Logos de sedes») sube un logo a cada sede (se guarda recortado en círculo, PNG 256 px). Cada sello del ciclo actual muestra el logo de la sede donde se puso (tarjeta web e imagen de sellos de Google y Apple Wallet); los sellos sin sede o de sedes sin logo llevan el chulo. La sede de cada sello se reconstruye del historial (`src/lib/cards/stamp-branches.ts`); con logos, la imagen de sellos es por tarjeta (`?c=<cardId>&h=<huella>`). Se recomienda un ícono simple, no un logo con texto.
 
 ## 19. Pendientes por definir
 

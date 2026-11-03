@@ -24,7 +24,7 @@ export function BranchSelect({ action, branches, selectedId, allLabel, label, se
   const [pending, startTransition] = useTransition();
 
   return (
-    <div className="flex items-center gap-2 text-sm">
+    <div className="flex w-full items-center gap-2 text-sm">
       <MapPin className="size-4 opacity-60" aria-hidden />
       <label htmlFor="branch-select" className="sr-only">
         {label}

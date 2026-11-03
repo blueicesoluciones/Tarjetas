@@ -106,52 +106,88 @@ export default async function CustomersPage({ searchParams }: PageProps<"/panel/
               {q ? "No encontramos clientes con esa búsqueda." : "Aún no hay clientes. Comparte tu enlace de inscripción."}
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Teléfono</TableHead>
-                  <TableHead className="text-right">Sellos</TableHead>
-                  <TableHead>Inscrito</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              {/* Celular: lista con lo esencial (la tabla no cabe a lo ancho). */}
+              <ul className="divide-y sm:hidden">
                 {rows.map((c) => {
                   const card = c.cards[0];
                   const locked = pinLockStatus(c.pin_locked_until, c.pin_lockout_count) !== null;
                   return (
-                    <TableRow key={c.id}>
-                      <TableCell>
-                        <Link href={`/panel/clientes/${c.id}`} className="font-medium hover:underline">
-                          {c.full_name}
-                        </Link>
-                        {locked ? (
-                          <Badge variant="destructive" className="ml-2">
-                            Bloqueado
-                          </Badge>
-                        ) : null}
-                        {card?.status === "blocked" ? (
-                          <Badge variant="outline" className="ml-2">
-                            Tarjeta bloqueada
-                          </Badge>
-                        ) : null}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">{formatPhone(c.phone_e164)}</TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {card ? (
-                          <span className={card.stamps_count >= required ? "font-semibold text-emerald-600" : undefined}>
-                            {card.stamps_count} / {required}
+                    <li key={c.id}>
+                      <Link href={`/panel/clientes/${c.id}`} className="flex items-center justify-between gap-3 py-3">
+                        <span className="min-w-0">
+                          <span className="block truncate font-medium">{c.full_name}</span>
+                          <span className="block text-xs text-muted-foreground">
+                            {formatPhone(c.phone_e164)} · desde {formatDate(c.created_at, timeZone)}
                           </span>
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap text-muted-foreground">{formatDate(c.created_at, timeZone)}</TableCell>
-                    </TableRow>
+                          {locked || card?.status === "blocked" ? (
+                            <span className="mt-1 flex gap-1.5">
+                              {locked ? <Badge variant="destructive">Bloqueado</Badge> : null}
+                              {card?.status === "blocked" ? <Badge variant="outline">Tarjeta bloqueada</Badge> : null}
+                            </span>
+                          ) : null}
+                        </span>
+                        <span
+                          className={
+                            card && card.stamps_count >= required
+                              ? "shrink-0 font-semibold text-emerald-600 tabular-nums"
+                              : "shrink-0 tabular-nums"
+                          }
+                        >
+                          {card ? `${card.stamps_count} / ${required}` : "—"}
+                        </span>
+                      </Link>
+                    </li>
                   );
                 })}
-              </TableBody>
-            </Table>
+              </ul>
+              <Table className="hidden sm:table">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead>Teléfono</TableHead>
+                    <TableHead className="text-right">Sellos</TableHead>
+                    <TableHead>Inscrito</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((c) => {
+                    const card = c.cards[0];
+                    const locked = pinLockStatus(c.pin_locked_until, c.pin_lockout_count) !== null;
+                    return (
+                      <TableRow key={c.id}>
+                        <TableCell>
+                          <Link href={`/panel/clientes/${c.id}`} className="font-medium hover:underline">
+                            {c.full_name}
+                          </Link>
+                          {locked ? (
+                            <Badge variant="destructive" className="ml-2">
+                              Bloqueado
+                            </Badge>
+                          ) : null}
+                          {card?.status === "blocked" ? (
+                            <Badge variant="outline" className="ml-2">
+                              Tarjeta bloqueada
+                            </Badge>
+                          ) : null}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">{formatPhone(c.phone_e164)}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {card ? (
+                            <span className={card.stamps_count >= required ? "font-semibold text-emerald-600" : undefined}>
+                              {card.stamps_count} / {required}
+                            </span>
+                          ) : (
+                            "—"
+                          )}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-muted-foreground">{formatDate(c.created_at, timeZone)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </>
           )}
         </CardContent>
       </Card>

@@ -67,7 +67,7 @@ export default async function CampaignsPage() {
     <>
       <PageHeader
         title="Campañas"
-        description="Envía un aviso al celular de los clientes que tienen tu tarjeta en Google Wallet o Apple Wallet."
+        description="Envía un aviso al celular de tus clientes, directo a su Wallet."
         action={
           <Badge variant="outline" className="h-7 px-3 text-sm">
             {left === null ? "Sin límite mensual" : `Te quedan ${left} de ${plan.campaignsPerMonth} este mes`}
@@ -80,12 +80,16 @@ export default async function CampaignsPage() {
           <CardTitle>Nuevo aviso</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="rounded-lg bg-muted p-3 text-sm">
-            Le llegará a <strong>{audience.length}</strong> {audience.length === 1 ? "cliente" : "clientes"}: los que
-            tienen la tarjeta guardada en Google o Apple Wallet y <strong>aceptaron recibir promociones</strong> al inscribirse
-            (así lo exige la ley de protección de datos). Google limita cuántas notificaciones muestra al día por tarjeta,
-            así que úsalas para algo especial.
-          </p>
+          <div className="rounded-lg bg-muted p-3 text-sm">
+            <p>
+              Le llegará a <strong>{audience.length}</strong> {audience.length === 1 ? "cliente" : "clientes"} con la tarjeta en
+              Wallet que aceptaron recibir promociones.
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              La ley de protección de datos exige ese permiso. Google limita las notificaciones diarias por tarjeta: úsalas para algo
+              especial.
+            </p>
+          </div>
           <CampaignForm businessName={business.name} audience={audience.length} disabled={left === 0} />
         </CardContent>
       </Card>

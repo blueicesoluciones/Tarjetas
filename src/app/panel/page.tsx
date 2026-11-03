@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { BarChart3 } from "lucide-react";
 import { BirthdaysToday } from "@/components/panel/birthdays-today";
 import { EventsTable } from "@/components/panel/events-table";
 import { LockedFeature } from "@/components/panel/locked-feature";
@@ -75,18 +75,19 @@ export default async function PanelHomePage() {
     countCustomers(),
     countEvents("stamp", dayStart),
     program ? countCards().eq("program_id", program.id).gte("stamps_count", program.stamps_required) : Promise.resolve({ count: 0 }),
-    listEvents({ businessId, branchId: branch?.id, limit: 10 }),
+    listEvents({ businessId, branchId: branch?.id, limit: 6 }),
   ]);
   const totalCustomers = customers.count ?? 0;
 
   const basicTiles: Tile[] = [
     { label: "Clientes inscritos", value: totalCustomers },
     { label: branch ? `Sellos hoy en ${branch.name}` : "Sellos hoy", value: stampsToday.count ?? 0 },
-    { label: "Premios por canjear", value: rewardReady.count ?? 0, hint: "Clientes con la tarjeta completa" },
+    { label: "Premios por canjear", value: rewardReady.count ?? 0, hint: "Tarjetas completas" },
   ];
 
   // ---- Medium ----
-  let advancedTiles: Tile[] = [];
+  let weekTiles: Tile[] = [];
+  let customerTiles: Tile[] = [];
   if (advanced) {
     const [stampsWeek, stampsPrevWeek, redeemWeek, redeemPrevWeek, redeemTotal, newWeek, newPrevWeek, inWallet, consent, active30] =
       await Promise.all([
@@ -106,28 +107,21 @@ export default async function PanelHomePage() {
           .eq("marketing_consent", true),
         countCards().gte("last_stamp_at", thirtyDaysAgo.toISOString()),
       ]);
-    const prevPeriod = "la semana anterior";
-    advancedTiles = [
-      {
-        label: "Sellos esta semana",
-        value: stampsWeek.count ?? 0,
-        hint: changeLabel(stampsWeek.count ?? 0, stampsPrevWeek.count ?? 0, prevPeriod),
-      },
-      {
-        label: "Canjes esta semana",
-        value: redeemWeek.count ?? 0,
-        hint: changeLabel(redeemWeek.count ?? 0, redeemPrevWeek.count ?? 0, prevPeriod),
-      },
-      {
-        label: "Clientes nuevos esta semana",
-        value: newWeek.count ?? 0,
-        hint: changeLabel(newWeek.count ?? 0, newPrevWeek.count ?? 0, prevPeriod),
-      },
+    basicTiles.push({
+      label: "Sellos esta semana",
+      value: stampsWeek.count ?? 0,
+      hint: weekChange(stampsWeek.count ?? 0, stampsPrevWeek.count ?? 0),
+    });
+    weekTiles = [
+      { label: "Canjes", value: redeemWeek.count ?? 0, hint: weekChange(redeemWeek.count ?? 0, redeemPrevWeek.count ?? 0) },
+      { label: "Clientes nuevos", value: newWeek.count ?? 0, hint: weekChange(newWeek.count ?? 0, newPrevWeek.count ?? 0) },
       { label: "Canjes totales", value: redeemTotal.count ?? 0, hint: "Premios entregados desde el inicio" },
+    ];
+    customerTiles = [
       {
         label: "Activos (30 días)",
         value: active30.count ?? 0,
-        hint: `${percent(active30.count ?? 0, totalCustomers)}% de tus clientes vino en el último mes`,
+        hint: `${percent(active30.count ?? 0, totalCustomers)}% vino en el último mes`,
       },
       {
         label: "En Wallet",
@@ -145,6 +139,7 @@ export default async function PanelHomePage() {
   // ---- Pro ----
   let pro: Awaited<ReturnType<typeof loadProMetrics>> | null = null;
   if (full) pro = await loadProMetrics(businessId, timeZone, chartStart, chartDays, thirtyDaysAgo, totalCustomers, branch?.id);
+  if (pro) customerTiles.push(...pro.tiles);
   const byBranch =
     branches.length > 0 && !branch ? await loadBranchComparison(businessId, branches, dayStart, weekStart, thirtyDaysAgo) : [];
 
@@ -156,49 +151,42 @@ export default async function PanelHomePage() {
           branch
             ? `Sede ${branch.name}: sellos, canjes, gráfico y actividad son de esta sede. Clientes, tarjetas y ranking son de todo el negocio.`
             : program
-              ? `${program.card_title} · ${program.stamps_required} sellos → ${program.reward_description}`
+              ? `${program.card_title}: ${program.stamps_required} sellos para ${program.reward_description.toLocaleLowerCase("es")}`
               : undefined
+        }
+        action={
+          full ? (
+            <Link
+              href="/panel/reporte"
+              className="inline-flex items-center gap-2 rounded-lg border bg-card px-3 py-2 text-sm font-medium hover:bg-muted"
+            >
+              <BarChart3 className="size-4" aria-hidden />
+              Reporte del mes
+            </Link>
+          ) : null
         }
       />
 
       <BirthdaysToday businessId={businessId} timeZone={timeZone} />
 
-      <TileGrid tiles={basicTiles} />
+      <KpiStrip tiles={basicTiles} />
 
       {advanced ? (
-        <section className="mt-6">
-          <h2 className="mb-3 text-sm font-semibold text-muted-foreground">Esta semana y tus clientes</h2>
-          <TileGrid tiles={advancedTiles} />
-        </section>
-      ) : (
-        <LockedFeature
-          className="mt-6"
-          title="Métricas detalladas"
-          description="Compara tus sellos, canjes y clientes nuevos con la semana anterior, y conoce cuántos clientes están activos, guardaron la tarjeta y aceptan promociones."
-          plan="medium"
-        />
-      )}
-
-      {pro ? (
-        <section className="mt-6 space-y-6">
-          <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-            <Card>
+        <div className="mt-6 grid gap-6 lg:grid-cols-3">
+          {pro ? (
+            <Card className="lg:col-span-2">
               <CardHeader>
-                <CardTitle>Sellos por día (últimos 30 días)</CardTitle>
+                <CardTitle>Sellos por día</CardTitle>
               </CardHeader>
               <CardContent>
                 <DailyBars days={chartDays} values={pro.daily} timeZone={timeZone} />
               </CardContent>
             </Card>
-            <div className="grid grid-cols-2 gap-3 self-start">
-              {pro.tiles.map((t) => (
-                <StatTile key={t.label} tile={t} />
-              ))}
-            </div>
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-            <Card>
+          ) : null}
+          <StatList title="Esta semana" tiles={weekTiles} />
+          <StatList title="Tus clientes" tiles={customerTiles} className={pro ? "" : "lg:col-span-2"} />
+          {pro ? (
+            <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle>Clientes más frecuentes</CardTitle>
               </CardHeader>
@@ -219,21 +207,18 @@ export default async function PanelHomePage() {
                 )}
               </CardContent>
             </Card>
-            <Link
-              href="/panel/reporte"
-              className="group flex flex-col justify-between rounded-xl border bg-ink p-6 text-paper transition-colors hover:bg-ink/90"
-            >
-              <div>
-                <p className="text-sm text-paper/70">Reporte mensual</p>
-                <p className="mt-1 text-xl font-semibold">Clientes nuevos, sellos, canjes y clientes que regresaron, mes a mes.</p>
-              </div>
-              <span className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-lime">
-                Ver reporte <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-              </span>
-            </Link>
-          </div>
-        </section>
-      ) : advanced ? (
+          ) : null}
+        </div>
+      ) : (
+        <LockedFeature
+          className="mt-6"
+          title="Métricas detalladas"
+          description="Compara tus sellos, canjes y clientes nuevos con la semana anterior, y conoce cuántos clientes están activos, guardaron la tarjeta y aceptan promociones."
+          plan="medium"
+        />
+      )}
+
+      {advanced && !pro ? (
         <LockedFeature
           className="mt-6"
           title="Gráficos, ranking de clientes y reporte mensual"
@@ -273,9 +258,7 @@ export default async function PanelHomePage() {
                 ))}
               </tbody>
             </table>
-            <p className="mt-3 text-xs text-muted-foreground">
-              Elige una sede arriba para ver su resumen, actividad y equipo.
-            </p>
+            <p className="mt-3 text-xs text-muted-foreground">Elige una sede en el menú para ver solo sus datos.</p>
           </CardContent>
         </Card>
       ) : null}
@@ -284,7 +267,7 @@ export default async function PanelHomePage() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Actividad reciente</CardTitle>
           <Link href="/panel/actividad" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
-            Ver todo →
+            Ver toda la actividad
           </Link>
         </CardHeader>
         <CardContent>
@@ -293,6 +276,12 @@ export default async function PanelHomePage() {
       </Card>
     </>
   );
+}
+
+/** Cambio frente al mismo tramo de la semana anterior (sin nota si no hubo movimiento). */
+function weekChange(current: number, previous: number): string | undefined {
+  if (current === 0 && previous === 0) return "Sin movimiento";
+  return changeLabel(current, previous, "la semana pasada");
 }
 
 async function loadProMetrics(
@@ -417,26 +406,50 @@ async function loadBranchComparison(
   });
 }
 
-function TileGrid({ tiles }: { tiles: Tile[] }) {
+/** Cifras principales en una sola franja (no una tarjeta por número). */
+function KpiStrip({ tiles }: { tiles: Tile[] }) {
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-      {tiles.map((t) => (
-        <StatTile key={t.label} tile={t} />
+    <div className={cn("grid grid-cols-2 overflow-hidden rounded-xl border bg-card", tiles.length > 3 ? "md:grid-cols-4" : "md:grid-cols-3")}>
+      {tiles.map((t, i) => (
+        <div
+          key={t.label}
+          className={cn("p-4 sm:p-5", i % 2 === 1 && "border-l", i >= 2 && "border-t md:border-t-0", i >= 1 && "md:border-l")}
+        >
+          <p className="text-sm text-muted-foreground">{t.label}</p>
+          <p className="mt-1 text-3xl font-bold tracking-tight tabular-nums">{formatValue(t.value)}</p>
+          {t.hint ? <p className="mt-1 text-xs text-muted-foreground">{t.hint}</p> : null}
+        </div>
       ))}
     </div>
   );
 }
 
-function StatTile({ tile }: { tile: Tile }) {
+/** Lista compacta de cifras: nombre y nota a la izquierda, número a la derecha. */
+function StatList({ title, tiles, className }: { title: string; tiles: Tile[]; className?: string }) {
   return (
-    <div className="rounded-xl border bg-card p-4">
-      <p className="text-xs text-muted-foreground">{tile.label}</p>
-      <p className="mt-1 text-2xl font-bold tabular-nums">
-        {typeof tile.value === "number" ? tile.value.toLocaleString("es") : tile.value}
-      </p>
-      {tile.hint ? <p className="mt-1 text-xs leading-snug text-muted-foreground">{tile.hint}</p> : null}
-    </div>
+    <Card className={className}>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <dl className="divide-y">
+          {tiles.map((t) => (
+            <div key={t.label} className="flex items-baseline justify-between gap-4 py-2.5 first:pt-0 last:pb-0">
+              <dt className="min-w-0">
+                <span className="text-sm">{t.label}</span>
+                {t.hint ? <span className="block text-xs text-muted-foreground">{t.hint}</span> : null}
+              </dt>
+              <dd className="text-xl font-semibold tabular-nums">{formatValue(t.value)}</dd>
+            </div>
+          ))}
+        </dl>
+      </CardContent>
+    </Card>
   );
+}
+
+function formatValue(value: number | string) {
+  return typeof value === "number" ? value.toLocaleString("es") : value;
 }
 
 /** Barras simples en HTML/CSS: una por día, con el total del período. */
@@ -452,7 +465,7 @@ function DailyBars({ days, values, timeZone }: { days: string[]; values: number[
   return (
     <div>
       <p className="mb-4 text-sm text-muted-foreground">
-        <span className="text-2xl font-bold text-foreground tabular-nums">{total.toLocaleString("es")}</span> sellos en 30 días
+        <span className="text-2xl font-bold text-foreground tabular-nums">{total.toLocaleString("es")}</span> sellos en los últimos 30 días
       </p>
       <div className="flex h-40 items-end gap-[3px]" role="img" aria-label={`Sellos por día: ${total} en total`}>
         {values.map((v, i) => (
