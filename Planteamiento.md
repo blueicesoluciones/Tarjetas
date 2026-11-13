@@ -34,7 +34,7 @@ Plataforma SaaS multi-negocio (multi-tenant) que se vende a emprendimientos (caf
 | Apple Wallet | **Implementado** (cuenta aprobada, Team ID RA3UKLZ775, Pass Type ID `pass.com.blueicesoluciones.stamp`). Se activa con `APPLE_WALLET_ENABLED=true` y las credenciales en base64. Avisos de campañas y «Te extrañamos» van en el campo «Novedades» del pase (`cards.apple_message`). **Cada negocio tiene su propio Pass Type ID** (si no, el iPhone apila las tarjetas de todos los negocios): el super admin genera la solicitud y sube el certificado de Apple en el detalle del negocio; la clave se guarda cifrada en `business_apple_pass_types` con `APPLE_PASS_KEYS_SECRET`. El identificador original (`pass.com.blueicesoluciones.stamp`) quedó asignado a Strawberry Cerrito; un negocio sin identificador propio no ofrece Apple Wallet para tarjetas nuevas (las ya guardadas se siguen actualizando); al activarlo, los pases anteriores avisan que hay tarjeta nueva y quedan anulados cuando el cliente la guarda. Cada certificado vence al año y se renueva desde el mismo lugar |
 | Hosting | Vercel plan Hobby (gratis) |
 | Base de datos | Supabase plan Free |
-| Dominio | Pendiente de compra; mientras tanto usar `*.vercel.app` |
+| Dominio | `https://stamp.blueicesoluciones.com` (subdominio de blueicesoluciones.com, DNS en Hostinger con CNAME a Vercel; `NEXT_PUBLIC_APP_URL` apunta ahí). `tarjetas-neon.vercel.app` debe seguir activo **sin redirección**: los pases de Apple ya emitidos tienen ese `webServiceURL` y los afiches impresos antes del cambio usan ese QR |
 | Pagos (cobro a negocios) | Fuera de alcance por ahora (Fase 6) |
 | Emails | **No se envían correos.** El super admin crea todos los usuarios (dueños y cajeros) con email y contraseña y se los entrega |
 
@@ -660,7 +660,7 @@ src/app/
 
 ```bash
 # App
-NEXT_PUBLIC_APP_URL=https://<proyecto>.vercel.app
+NEXT_PUBLIC_APP_URL=https://stamp.blueicesoluciones.com
 CUSTOMER_SESSION_SECRET=            # string aleatorio largo
 
 # Supabase
@@ -832,4 +832,4 @@ Al bajar a un plan sin fondo con imagen, la tarjeta vuelve a color sólido. Al b
 
 ## 19. Pendientes por definir
 
-- Dominio propio.
+- Nada por ahora.
