@@ -601,7 +601,7 @@ Descarga: `GET /api/apple/pass/[accessToken]` devuelve el `.pkpass` con `Content
 
 ```
 src/app/
-  page.tsx                         # landing de la plataforma (marketing básico)
+  page.tsx                         # portada de ventas: demo de sellos, por qué, cómo funciona, calculadora, planes con precio, preguntas; «Ingresar» arriba a la derecha lleva a /login. Los botones de compra y la prueba gratis de 15 días abren WhatsApp de ventas (`LEGAL.salesWhatsapp`)
   login/                           # login de staff (super_admin, owner, cashier)
   privacidad/                      # política de privacidad
   terminos/                        # términos de uso
@@ -810,6 +810,7 @@ Trabajar **una tarea a la vez**, con commit al terminar cada una. Cada fase tien
 
 | | Standard | Medium | Pro |
 |---|---|---|---|
+| Precio mensual (COP, `PLANS[x].priceCop`) | $50.000 | $80.000 | $160.000 |
 | Tarjeta web + Google/Apple Wallet, inscripción, programa, app del cajero, QR y afiche, restablecer PIN, ajustes, eliminar clientes | ✓ | ✓ | ✓ |
 | Avisos automáticos en Wallet («Te falta 1 sello», «Premio disponible») | ✓ | ✓ | ✓ |
 | Cajeros activos (además del dueño) | 2 | 5 | Ilimitados |
@@ -832,4 +833,3 @@ Al bajar a un plan sin fondo con imagen, la tarjeta vuelve a color sólido. Al b
 ## 19. Pendientes por definir
 
 - Dominio propio.
-- Precio para los negocios.

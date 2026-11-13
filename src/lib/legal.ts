@@ -8,6 +8,8 @@ export const LEGAL = {
   email: "blueicesoluciones@gmail.com",
   /** WhatsApp de soporte prioritario (plan Pro), en formato +57… Pendiente de definir. */
   supportWhatsapp: null as string | null,
+  /** WhatsApp de ventas para la portada, en formato +57…. Si falta, la portada usa el correo. */
+  salesWhatsapp: "+573225279789" as string | null,
   country: "Colombia",
   taxId: null as string | null,
   address: null as string | null,

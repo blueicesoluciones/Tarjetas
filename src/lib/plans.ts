@@ -9,6 +9,8 @@ export type MetricsLevel = "basic" | "advanced" | "full";
 
 export interface PlanFeatures {
   label: string;
+  /** Precio mensual en pesos colombianos. */
+  priceCop: number;
   /** Cajeros activos permitidos (además del dueño). null = ilimitados. */
   maxCashiers: number | null;
   /** Fondo de tarjeta con imagen (si no, solo color sólido). */
@@ -34,6 +36,7 @@ export interface PlanFeatures {
 export const PLANS: Record<Plan, PlanFeatures> = {
   standard: {
     label: "Standard",
+    priceCop: 50000,
     maxCashiers: 2,
     backgroundImage: false,
     milestoneRewards: false,
@@ -47,6 +50,7 @@ export const PLANS: Record<Plan, PlanFeatures> = {
   },
   medium: {
     label: "Medium",
+    priceCop: 80000,
     maxCashiers: 5,
     backgroundImage: true,
     milestoneRewards: true,
@@ -60,6 +64,7 @@ export const PLANS: Record<Plan, PlanFeatures> = {
   },
   pro: {
     label: "Pro",
+    priceCop: 160000,
     maxCashiers: null,
     backgroundImage: true,
     milestoneRewards: true,
@@ -72,6 +77,12 @@ export const PLANS: Record<Plan, PlanFeatures> = {
     support: "whatsapp",
   },
 };
+
+/** "$50.000" */
+export function formatCop(value: number): string {
+  // Sin toLocaleString para que servidor y navegador den exactamente lo mismo.
+  return `$${Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+}
 
 export const PLAN_ORDER: Plan[] = ["standard", "medium", "pro"];
 
