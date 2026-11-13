@@ -14,6 +14,7 @@ import { addDays, dayAndWeekStart, localDateString, startOfLocalDay } from "@/li
 import { bestWeekday, bucketByLocalDay, changeLabel, lastNDays, percent } from "@/lib/panel/metrics";
 import { planFeatures } from "@/lib/plans";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Resumen" };
@@ -131,7 +132,7 @@ export default async function PanelHomePage() {
       {
         label: "Aceptan promociones",
         value: consent.count ?? 0,
-        hint: `${percent(consent.count ?? 0, totalCustomers)}% recibe tus campañas`,
+        hint: `${percent(consent.count ?? 0, totalCustomers)}% aceptó recibir tus campañas`,
       },
     ];
   }
@@ -294,16 +295,20 @@ async function loadProMetrics(
   branchId?: string,
 ) {
   const admin = createAdminClient();
-  let chartQuery = admin
-    .from("stamp_events")
-    .select("created_at")
-    .eq("business_id", businessId)
-    .eq("type", "stamp")
-    .is("undone_at", null)
-    .gte("created_at", chartStart.toISOString());
-  if (branchId) chartQuery = chartQuery.eq("branch_id", branchId);
+  // Por páginas: PostgREST corta en 1000 filas y el gráfico perdía los días recientes.
+  const chartPage = (from: number, to: number) => {
+    let q = admin
+      .from("stamp_events")
+      .select("created_at")
+      .eq("business_id", businessId)
+      .eq("type", "stamp")
+      .is("undone_at", null)
+      .gte("created_at", chartStart.toISOString());
+    if (branchId) q = q.eq("branch_id", branchId);
+    return q.order("id").range(from, to).returns<{ created_at: string }[]>();
+  };
   const [events, top, returning, inactive, visitSum] = await Promise.all([
-    chartQuery.order("created_at").limit(10000).returns<{ created_at: string }[]>(),
+    fetchAllRows(chartPage),
     admin
       .from("cards")
       .select("id, total_stamps, total_redemptions, customers!inner(full_name, deleted_at)")
@@ -325,19 +330,23 @@ async function loadProMetrics(
       .eq("business_id", businessId)
       .eq("status", "active")
       .lt("last_stamp_at", thirtyDaysAgo.toISOString()),
-    admin
-      .from("cards")
-      .select("total_stamps")
-      .eq("business_id", businessId)
-      .eq("status", "active")
-      .limit(20000)
-      .returns<{ total_stamps: number }[]>(),
+    fetchAllRows((from, to) =>
+      admin
+        .from("cards")
+        .select("total_stamps")
+        .eq("business_id", businessId)
+        .eq("status", "active")
+        .gt("total_stamps", 0)
+        .order("id")
+        .range(from, to)
+        .returns<{ total_stamps: number }[]>(),
+    ),
   ]);
 
-  const dates = (events.data ?? []).map((e) => e.created_at);
+  const dates = events.map((e) => e.created_at);
   const daily = bucketByLocalDay(dates, timeZone, chartDays);
   const best = bestWeekday(dates, timeZone);
-  const totalVisits = (visitSum.data ?? []).reduce((acc, c) => acc + c.total_stamps, 0);
+  const totalVisits = visitSum.reduce((acc, c) => acc + c.total_stamps, 0);
   const avg = totalCustomers > 0 ? (totalVisits / totalCustomers).toFixed(1).replace(".", ",") : "0";
 
   const tiles: Tile[] = [
@@ -380,18 +389,22 @@ async function loadBranchComparison(
   thirtyDaysAgo: Date,
 ) {
   const since = new Date(Math.min(thirtyDaysAgo.getTime(), weekStart.getTime()));
-  const { data } = await createAdminClient()
-    .from("stamp_events")
-    .select("branch_id, type, created_at")
-    .eq("business_id", businessId)
-    .in("type", ["stamp", "redeem"])
-    .is("undone_at", null)
-    .not("branch_id", "is", null)
-    .gte("created_at", since.toISOString())
-    .limit(50000)
-    .returns<{ branch_id: string; type: "stamp" | "redeem"; created_at: string }[]>();
+  const admin = createAdminClient();
+  const data = await fetchAllRows((from, to) =>
+    admin
+      .from("stamp_events")
+      .select("branch_id, type, created_at")
+      .eq("business_id", businessId)
+      .in("type", ["stamp", "redeem"])
+      .is("undone_at", null)
+      .not("branch_id", "is", null)
+      .gte("created_at", since.toISOString())
+      .order("id")
+      .range(from, to)
+      .returns<{ branch_id: string; type: "stamp" | "redeem"; created_at: string }[]>(),
+  );
   return branches.map((b) => {
-    const rows = (data ?? []).filter((e) => e.branch_id === b.id);
+    const rows = data.filter((e) => e.branch_id === b.id);
     const at = (e: { created_at: string }) => new Date(e.created_at).getTime();
     const stamps = rows.filter((e) => e.type === "stamp");
     return {

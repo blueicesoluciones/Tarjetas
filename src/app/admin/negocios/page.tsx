@@ -27,6 +27,8 @@ export default async function BusinessesPage({ searchParams }: PageProps<"/admin
   const { data } = await createAdminClient()
     .from("businesses")
     .select("id, name, slug, status, plan, created_at, customers(count)")
+    // Igual que el detalle y el panel: los clientes eliminados no se cuentan.
+    .is("customers.deleted_at", null)
     .order("created_at", { ascending: false })
     .returns<Row[]>();
   const businesses = data ?? [];

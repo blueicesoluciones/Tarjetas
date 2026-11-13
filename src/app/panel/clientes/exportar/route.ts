@@ -6,6 +6,7 @@ import { formatBirthday } from "@/lib/domain/birthday";
 import { toCsv } from "@/lib/panel/csv";
 import { planFeatures } from "@/lib/plans";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 
 interface Row {
   full_name: string;
@@ -33,20 +34,30 @@ export async function GET() {
     return jsonError("Exportar clientes está disponible desde el plan Medium", 403);
   }
 
-  const { data, error } = await createAdminClient()
-    .from("customers")
-    .select("full_name, phone_e164, marketing_consent, birth_month, birth_day, created_at, cards(stamps_count, total_stamps, total_redemptions, last_stamp_at, google_object_id)")
-    .eq("business_id", business.id)
-    .is("deleted_at", null)
-    .order("created_at", { ascending: true })
-    .returns<Row[]>();
-  if (error) return jsonError("No se pudo generar el archivo", 500);
+  const admin = createAdminClient();
+  let data: Row[];
+  try {
+    // Por páginas: PostgREST corta en 1000 filas y el archivo quedaba incompleto.
+    data = await fetchAllRows((from, to) =>
+      admin
+        .from("customers")
+        .select("full_name, phone_e164, marketing_consent, birth_month, birth_day, created_at, cards(stamps_count, total_stamps, total_redemptions, last_stamp_at, google_object_id)")
+        .eq("business_id", business.id)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to)
+        .returns<Row[]>(),
+    );
+  } catch {
+    return jsonError("No se pudo generar el archivo", 500);
+  }
 
   const date = (iso: string | null) =>
     iso ? new Intl.DateTimeFormat("es-CO", { timeZone: business.timezone, dateStyle: "short" }).format(new Date(iso)) : "";
   const csv = toCsv(
     ["Nombre", "Celular", "Cumpleaños", "Sellos actuales", "Sellos para el premio", "Sellos históricos", "Premios canjeados", "Último sello", "Google Wallet", "Acepta promociones", "Inscrito"],
-    (data ?? []).map((c) => {
+    data.map((c) => {
       const card = c.cards[0];
       return [
         c.full_name,
@@ -70,7 +81,7 @@ export async function GET() {
     action: "customers.export",
     entityType: "business",
     entityId: business.id,
-    metadata: { rows: data?.length ?? 0 },
+    metadata: { rows: data.length },
     impersonating: ctx.impersonating,
   });
 

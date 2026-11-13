@@ -160,6 +160,7 @@ const PLAN_CARDS: PlanCard[] = [
     items: [
       `${PLANS.medium.campaignsPerMonth} campañas al mes al celular de tus clientes`,
       "Premios en el camino (ej. descuento a los 5 sellos y premio a los 10)",
+      "Sello personalizado: tu logo, una imagen o un ícono",
       "Tarjeta con imagen de fondo",
       `Hasta ${PLANS.medium.maxCashiers} cajeros`,
       "Métricas detalladas",

@@ -2,6 +2,7 @@ import "server-only";
 import { BIRTHDAY_REMINDER_BODY, BIRTHDAY_REMINDER_TITLE } from "@/lib/domain/birthday";
 import { startOfLocalMonth } from "@/lib/panel/format";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { appleWallet, googleWallet, syncCardEverywhere } from "@/lib/wallet";
 import { pushPassUpdate } from "@/lib/wallet/apns";
 import { sendGoogleWalletMessage } from "@/lib/wallet/google";
@@ -18,16 +19,22 @@ export interface WalletTarget {
  * Apple Wallet de clientes que aceptaron recibir promociones (Ley 1581).
  */
 export async function campaignAudience(businessId: string): Promise<WalletTarget[]> {
-  const { data } = await createAdminClient()
-    .from("cards")
-    .select("id, google_object_id, apple_serial_number, customers!inner(marketing_consent, deleted_at)")
-    .eq("business_id", businessId)
-    .eq("status", "active")
-    .or("google_object_id.not.is.null,apple_serial_number.not.is.null")
-    .eq("customers.marketing_consent", true)
-    .is("customers.deleted_at", null)
-    .returns<{ id: string; google_object_id: string | null; apple_serial_number: string | null }[]>();
-  return (data ?? []).map((c) => ({ cardId: c.id, objectId: c.google_object_id, appleSerial: c.apple_serial_number }));
+  const admin = createAdminClient();
+  // Por páginas: PostgREST corta en 1000 filas y el resto no recibía la campaña.
+  const data = await fetchAllRows((from, to) =>
+    admin
+      .from("cards")
+      .select("id, google_object_id, apple_serial_number, customers!inner(marketing_consent, deleted_at)")
+      .eq("business_id", businessId)
+      .eq("status", "active")
+      .or("google_object_id.not.is.null,apple_serial_number.not.is.null")
+      .eq("customers.marketing_consent", true)
+      .is("customers.deleted_at", null)
+      .order("id")
+      .range(from, to)
+      .returns<{ id: string; google_object_id: string | null; apple_serial_number: string | null }[]>(),
+  );
+  return data.map((c) => ({ cardId: c.id, objectId: c.google_object_id, appleSerial: c.apple_serial_number }));
 }
 
 /** Campañas enviadas en el mes calendario actual (zona horaria del negocio). */
@@ -136,16 +143,21 @@ export const BIRTHDAY_REMINDER_ACTION = "wallet.birthday_reminder";
  * pedirlo). Es un aviso de servicio, no promocional: no exige consentimiento.
  */
 export async function birthdayReminderAudience(businessId: string): Promise<WalletTarget[]> {
-  const { data } = await createAdminClient()
-    .from("cards")
-    .select("id, google_object_id, apple_serial_number, customers!inner(birth_month, deleted_at)")
-    .eq("business_id", businessId)
-    .eq("status", "active")
-    .or("google_object_id.not.is.null,apple_serial_number.not.is.null")
-    .is("customers.birth_month", null)
-    .is("customers.deleted_at", null)
-    .returns<{ id: string; google_object_id: string | null; apple_serial_number: string | null }[]>();
-  return (data ?? []).map((c) => ({ cardId: c.id, objectId: c.google_object_id, appleSerial: c.apple_serial_number }));
+  const admin = createAdminClient();
+  const data = await fetchAllRows((from, to) =>
+    admin
+      .from("cards")
+      .select("id, google_object_id, apple_serial_number, customers!inner(birth_month, deleted_at)")
+      .eq("business_id", businessId)
+      .eq("status", "active")
+      .or("google_object_id.not.is.null,apple_serial_number.not.is.null")
+      .is("customers.birth_month", null)
+      .is("customers.deleted_at", null)
+      .order("id")
+      .range(from, to)
+      .returns<{ id: string; google_object_id: string | null; apple_serial_number: string | null }[]>(),
+  );
+  return data.map((c) => ({ cardId: c.id, objectId: c.google_object_id, appleSerial: c.apple_serial_number }));
 }
 
 /**

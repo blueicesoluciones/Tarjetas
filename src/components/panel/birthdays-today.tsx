@@ -14,9 +14,9 @@ interface Row {
 /** Clientes que cumplen años hoy (zona horaria del negocio). No se muestra si no hay. */
 export async function BirthdaysToday({ businessId, timeZone }: { businessId: string; timeZone: string }) {
   const dates = birthdaysOn(localDateString(new Date(), timeZone));
-  const { data } = await createAdminClient()
+  const { data, count } = await createAdminClient()
     .from("customers")
-    .select("id, full_name, phone_e164")
+    .select("id, full_name, phone_e164", { count: "exact" })
     .eq("business_id", businessId)
     .is("deleted_at", null)
     .eq("birth_month", dates[0].month)
@@ -29,12 +29,14 @@ export async function BirthdaysToday({ businessId, timeZone }: { businessId: str
     .returns<Row[]>();
   const people = data ?? [];
   if (people.length === 0) return null;
+  // La lista muestra hasta 50; el título dice cuántos son en total.
+  const total = Math.max(count ?? 0, people.length);
 
   return (
     <section className="mb-6 rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 text-amber-950" aria-labelledby="birthdays-today">
       <h2 id="birthdays-today" className="flex items-center gap-2 font-semibold">
         <Cake className="size-5" aria-hidden />
-        {people.length === 1 ? "Hoy cumple años 1 cliente" : `Hoy cumplen años ${people.length} clientes`}
+        {total === 1 ? "Hoy cumple años 1 cliente" : `Hoy cumplen años ${total} clientes`}
       </h2>
       <p className="mt-0.5 text-sm text-amber-900/80">Salúdalos o dales un detalle cuando vengan.</p>
       <ul className="mt-3 divide-y divide-amber-200 text-sm">

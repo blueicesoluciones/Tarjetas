@@ -1,10 +1,11 @@
 import "server-only";
 import { cache } from "react";
-import type { Plan } from "@/lib/plans";
+import { planFeatures, type Plan } from "@/lib/plans";
 import { milestoneStatuses, type MilestoneStatus } from "@/lib/rewards";
 import { getProgramMilestones } from "@/lib/rewards-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cardStampLogos } from "./stamp-logos";
+import { resolveStampStyle, type StampStyle } from "./stamp-style";
 
 export interface PublicCardView {
   id: string;
@@ -18,6 +19,8 @@ export interface PublicCardView {
   needsBirthday: boolean;
   /** Multisede: logo de la sede de cada sello (null = chulo de siempre). */
   stampLogos: (string | null)[] | null;
+  /** Diseño de los sellos puestos (Medium y Pro). */
+  stampStyle: StampStyle;
   /** Premios intermedios del ciclo actual (vacío si el plan no los incluye). */
   milestones: MilestoneStatus[];
   program: {
@@ -48,7 +51,15 @@ interface Row {
   claimed_milestones: number[];
   status: "active" | "blocked";
   customers: { full_name: string; birth_month: number | null; deleted_at: string | null };
-  programs: { id: string; card_title: string; stamps_required: number; reward_description: string; design_version: number };
+  programs: {
+    id: string;
+    card_title: string;
+    stamps_required: number;
+    reward_description: string;
+    design_version: number;
+    stamp_icon: string;
+    stamp_image_url: string | null;
+  };
   businesses: {
     id: string;
     name: string;
@@ -68,7 +79,7 @@ export const getCardByAccessToken = cache(async (accessToken: string): Promise<P
   const { data } = await createAdminClient()
     .from("cards")
     .select(
-      "id, public_code, access_token, stamps_count, total_redemptions, claimed_milestones, status, customers(full_name, birth_month, deleted_at), programs(id, card_title, stamps_required, reward_description, design_version), businesses(id, name, slug, logo_url, card_background_url, primary_color, text_color, status, plan)",
+      "id, public_code, access_token, stamps_count, total_redemptions, claimed_milestones, status, customers(full_name, birth_month, deleted_at), programs(id, card_title, stamps_required, reward_description, design_version, stamp_icon, stamp_image_url), businesses(id, name, slug, logo_url, card_background_url, primary_color, text_color, status, plan)",
     )
     .eq("access_token", accessToken)
     .maybeSingle<Row>();
@@ -88,6 +99,11 @@ export const getCardByAccessToken = cache(async (accessToken: string): Promise<P
     customerName: data.customers.full_name,
     needsBirthday: data.customers.birth_month === null,
     stampLogos,
+    stampStyle: resolveStampStyle(
+      planFeatures(data.businesses.plan).customStamp,
+      data.programs.stamp_icon,
+      data.programs.stamp_image_url,
+    ),
     milestones: milestoneStatuses(milestones, data.stamps_count, data.claimed_milestones ?? []),
     program: {
       id: data.programs.id,

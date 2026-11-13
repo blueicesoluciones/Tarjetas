@@ -8,15 +8,17 @@ import { requireStaff } from "@/lib/auth/staff";
 import { planFeatures } from "@/lib/plans";
 import { LockedFeature } from "@/components/panel/locked-feature";
 import { getProgramMilestones } from "@/lib/rewards-server";
+import { isStampIcon } from "@/lib/cards/stamp-style";
 import { defaultWinbackMessage } from "@/lib/winback";
 import { BranchLogos } from "./branch-logos";
 import { ProgramForm } from "./program-form";
 import { RewardsForm } from "./rewards-form";
+import { StampStyleForm } from "./stamp-style-form";
 import { WinbackForm } from "./winback-form";
 
 export const metadata: Metadata = { title: "Programa" };
 
-type Section = "tarjeta" | "premios" | "avisos" | "sedes";
+type Section = "tarjeta" | "sellos" | "premios" | "avisos";
 
 export default async function ProgramPage({ searchParams }: PageProps<"/panel/programa">) {
   const ctx = await requireStaff(["owner"], { needsBusiness: true });
@@ -30,13 +32,13 @@ export default async function ProgramPage({ searchParams }: PageProps<"/panel/pr
 
   const tabs: { key: Section; label: string; href: string }[] = [
     { key: "tarjeta", label: "Tarjeta y marca", href: "/panel/programa" },
+    { key: "sellos", label: "Sellos", href: "/panel/programa?seccion=sellos" },
     { key: "premios", label: "Premios en el camino", href: "/panel/programa?seccion=premios" },
     { key: "avisos", label: "Aviso «Te extrañamos»", href: "/panel/programa?seccion=avisos" },
-    ...(branches.length > 0
-      ? [{ key: "sedes" as const, label: "Logos de sedes", href: "/panel/programa?seccion=sedes" }]
-      : []),
   ];
-  const requested = (await searchParams).seccion;
+  const rawSection = (await searchParams).seccion;
+  // «sedes» era la pestaña anterior de los logos por sede.
+  const requested = rawSection === "sedes" ? "sellos" : rawSection;
   const section: Section = tabs.find((t) => t.key === requested)?.key ?? "tarjeta";
 
   return (
@@ -102,7 +104,30 @@ export default async function ProgramPage({ searchParams }: PageProps<"/panel/pr
           )}
         </div>
       ) : null}
-      {section === "sedes" ? <BranchLogos branches={branches} /> : null}
+      {section === "sellos" ? (
+        <div className="space-y-6">
+          {features.customStamp ? (
+            <StampStyleForm
+              icon={isStampIcon(program.stamp_icon) ? program.stamp_icon : "check"}
+              imageUrl={program.stamp_image_url}
+              businessLogoUrl={business.logo_url}
+              primaryColor={business.primary_color}
+              textColor={business.text_color}
+              stampsRequired={program.stamps_required}
+              milestones={milestones.map((m) => m.stampsAt)}
+            />
+          ) : (
+            <div className="max-w-3xl">
+              <LockedFeature
+                title="Sello personalizado"
+                description="Pon tu logo, una imagen o un ícono dentro de cada sello, en la tarjeta web y en Wallet."
+                plan="medium"
+              />
+            </div>
+          )}
+          {branches.length > 0 ? <BranchLogos branches={branches} /> : null}
+        </div>
+      ) : null}
     </>
   );
 }

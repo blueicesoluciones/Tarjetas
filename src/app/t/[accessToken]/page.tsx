@@ -81,6 +81,7 @@ export default async function WebCardPage({ params, searchParams }: PageProps<"/
             textColor={business.textColor}
             milestones={card.milestones.map((m) => m.stampsAt)}
             logos={card.stampLogos}
+            stamp={card.stampStyle}
           />
 
           <div className="flex items-end justify-between gap-3 px-5 pb-5">

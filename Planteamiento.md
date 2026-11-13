@@ -650,7 +650,7 @@ src/app/
     apple/...                                 # stubs (sección 12)
 ```
 
-- **Navegación del panel:** menú lateral agrupado (Resumen · Clientes: Clientes, Actividad · Tu tarjeta: Programa, Compartir, Campañas · Tu negocio: Reporte, Equipo, Mi plan) con el botón «Abrir escáner» y el selector de sede; en el celular el mismo menú se abre desde la barra superior. Programa se divide en pestañas por `?seccion=`: Tarjeta y marca, Premios en el camino, Aviso «Te extrañamos» y Logos de sedes.
+- **Navegación del panel:** menú lateral agrupado (Resumen · Clientes: Clientes, Actividad · Tu tarjeta: Programa, Compartir, Campañas · Tu negocio: Reporte, Equipo, Mi plan) con el botón «Abrir escáner» y el selector de sede; en el celular el mismo menú se abre desde la barra superior. Programa se divide en pestañas por `?seccion=`: Tarjeta y marca, Sellos (diseño del sello y, en Pro, logos de sedes), Premios en el camino y Aviso «Te extrañamos».
 - Middleware (`middleware.ts`): refresca la sesión de Supabase y protege `/admin`, `/panel`, `/escaner` según rol. `/n/*`, `/t/*` y `/api/customers/*` son públicos (con sus propias validaciones).
 - **Modo "ver como":** el super_admin elige un negocio en `/admin/negocios/[id]`; se guarda una cookie httpOnly `acting_business_id`, validada en servidor solo si el usuario es super_admin. `/panel` y `/escaner` usan ese negocio y muestran un banner fijo "Estás viendo como [negocio] — Salir". Acciones registradas en auditoría con `impersonating: true`.
 
@@ -815,6 +815,7 @@ Trabajar **una tarea a la vez**, con commit al terminar cada una. Cada fase tien
 | Avisos automáticos en Wallet («Te falta 1 sello», «Premio disponible») | ✓ | ✓ | ✓ |
 | Cajeros activos (además del dueño) | 2 | 5 | Ilimitados |
 | Fondo de tarjeta | Color sólido | Imagen | Imagen |
+| Sello personalizado (chulo, estrella, corazón, logo del negocio o imagen propia; Programa → «Sellos») | — | ✓ | ✓ (además, logo por sede) |
 | Premios intermedios en la misma tarjeta (ej. 5 sellos descuento, 10 sellos premio final; no restan sellos, se reinician al canjear el final) | — | ✓ (hasta 5) | ✓ (hasta 5) |
 | Campañas por Wallet (solo a quienes aceptaron promociones) | — | 3 al mes | Sin límite mensual |
 | Exportar clientes a CSV | — | ✓ | ✓ |
@@ -828,7 +829,9 @@ Al bajar a un plan sin fondo con imagen, la tarjeta vuelve a color sólido. Al b
 
 **Multisede (tablas):** `branches` (business_id, name, address, logo_url, is_active; se desactivan, no se borran), `profiles.branch_id` (solo cajeros) y `stamp_events.branch_id`. `add_stamp`, `redeem_reward` y `redeem_milestone` reciben `p_branch_id` opcional: al cajero se le pone siempre su sede; el dueño la elige en el escáner.
 
-**Logo por sede:** el super admin (detalle del negocio → Sedes) o el dueño (Programa → «Logos de sedes») sube un logo a cada sede (se guarda recortado en círculo, PNG 256 px). Cada sello del ciclo actual muestra el logo de la sede donde se puso (tarjeta web e imagen de sellos de Google y Apple Wallet); los sellos sin sede o de sedes sin logo llevan el chulo. La sede de cada sello se reconstruye del historial (`src/lib/cards/stamp-branches.ts`); con logos, la imagen de sellos es por tarjeta (`?c=<cardId>&h=<huella>`). Se recomienda un ícono simple, no un logo con texto.
+**Diseño del sello (Medium y Pro):** `programs.stamp_icon` (`check` | `star` | `heart` | `image`) y `programs.stamp_image_url` (PNG recortado en círculo; «Usar el logo de mi negocio» lo pone completo sobre un círculo blanco). Se elige en Programa → «Sellos» (`/panel/programa/sello`); cada cambio sube `design_version` y sincroniza Wallet. Sin el plan se dibuja el chulo (`resolveStampStyle`). Los sellos van en una fila hasta 5, en dos de 6 a 12 y en tres desde 13 (`stampGrid`), y los círculos con premio (intermedio o final) llevan un regalo.
+
+**Logo por sede:** el super admin (detalle del negocio → Sedes) o el dueño (Programa → «Sellos») sube un logo a cada sede (se guarda recortado en círculo, PNG 256 px). Cada sello del ciclo actual muestra el logo de la sede donde se puso (tarjeta web e imagen de sellos de Google y Apple Wallet); los sellos sin sede o de sedes sin logo llevan el diseño del sello del programa. La sede de cada sello se reconstruye del historial (`src/lib/cards/stamp-branches.ts`); con logos, la imagen de sellos es por tarjeta (`?c=<cardId>&h=<huella>`). Se recomienda un ícono simple, no un logo con texto.
 
 ## 19. Pendientes por definir
 

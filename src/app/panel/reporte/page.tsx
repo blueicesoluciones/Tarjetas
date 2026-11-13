@@ -10,6 +10,7 @@ import { localDateString } from "@/lib/panel/format";
 import { changeLabel, monthRange, type MonthRange } from "@/lib/panel/metrics";
 import { planFeatures } from "@/lib/plans";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 
 export const metadata: Metadata = { title: "Reporte mensual" };
 
@@ -35,52 +36,58 @@ async function monthStats(businessId: string, range: MonthRange, branchId?: stri
     .is("undone_at", null)
     .gte("created_at", from)
     .lt("created_at", to);
-  let stampsQuery = admin
-    .from("stamp_events")
-    .select("card_id")
-    .eq("business_id", businessId)
-    .eq("type", "stamp")
-    .is("undone_at", null)
-    .gte("created_at", from)
-    .lt("created_at", to);
-  if (branchId) {
-    redemptionsQuery = redemptionsQuery.eq("branch_id", branchId);
-    stampsQuery = stampsQuery.eq("branch_id", branchId);
-  }
+  if (branchId) redemptionsQuery = redemptionsQuery.eq("branch_id", branchId);
+  // Por páginas: PostgREST corta en 1000 filas (sellos y visitantes salían topados en 1000).
+  const stampsPage = (start: number, end: number) => {
+    let q = admin
+      .from("stamp_events")
+      .select("card_id")
+      .eq("business_id", businessId)
+      .eq("type", "stamp")
+      .is("undone_at", null)
+      .gte("created_at", from)
+      .lt("created_at", to);
+    if (branchId) q = q.eq("branch_id", branchId);
+    return q.order("id").range(start, end).returns<{ card_id: string }[]>();
+  };
 
   const [newCustomers, redemptions, stampEvents] = await Promise.all([
     admin
       .from("customers")
       .select("id", { count: "exact", head: true })
       .eq("business_id", businessId)
+      .is("deleted_at", null)
       .gte("created_at", from)
       .lt("created_at", to),
     redemptionsQuery,
-    stampsQuery.limit(20000).returns<{ card_id: string }[]>(),
+    fetchAllRows(stampsPage),
   ]);
 
-  const visitors = [...new Set((stampEvents.data ?? []).map((e) => e.card_id))];
+  const visitors = [...new Set(stampEvents.map((e) => e.card_id))];
 
-  // Regresaron: visitaron este mes y ya tenían algún sello antes del mes.
+  // Regresaron: visitaron este mes y ya tenían algún sello antes del mes (en cualquier sede).
   let returning = 0;
   for (let i = 0; i < visitors.length; i += 200) {
     const chunk = visitors.slice(i, i + 200);
-    const { data } = await admin
-      .from("stamp_events")
-      .select("card_id")
-      .eq("business_id", businessId)
-      .eq("type", "stamp")
-      .is("undone_at", null)
-      .lt("created_at", from)
-      .in("card_id", chunk)
-      .limit(20000)
-      .returns<{ card_id: string }[]>();
-    returning += new Set((data ?? []).map((e) => e.card_id)).size;
+    const data = await fetchAllRows((start, end) =>
+      admin
+        .from("stamp_events")
+        .select("card_id")
+        .eq("business_id", businessId)
+        .eq("type", "stamp")
+        .is("undone_at", null)
+        .lt("created_at", from)
+        .in("card_id", chunk)
+        .order("id")
+        .range(start, end)
+        .returns<{ card_id: string }[]>(),
+    );
+    returning += new Set(data.map((e) => e.card_id)).size;
   }
 
   return {
     newCustomers: newCustomers.count ?? 0,
-    stamps: stampEvents.data?.length ?? 0,
+    stamps: stampEvents.length,
     redemptions: redemptions.count ?? 0,
     uniqueVisitors: visitors.length,
     returning,

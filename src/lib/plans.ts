@@ -15,6 +15,8 @@ export interface PlanFeatures {
   maxCashiers: number | null;
   /** Fondo de tarjeta con imagen (si no, solo color sólido). */
   backgroundImage: boolean;
+  /** Diseño propio del sello: ícono, logo o imagen dentro de cada sello. */
+  customStamp: boolean;
   /** Premios intermedios en la misma tarjeta (ej. 5 sellos y 10 sellos). Igual en la migración 08. */
   milestoneRewards: boolean;
   /** Campañas por Wallet por mes calendario. 0 = no incluye, null = sin límite. */
@@ -39,6 +41,7 @@ export const PLANS: Record<Plan, PlanFeatures> = {
     priceCop: 50000,
     maxCashiers: 2,
     backgroundImage: false,
+    customStamp: false,
     milestoneRewards: false,
     campaignsPerMonth: 0,
     csvExport: false,
@@ -53,6 +56,7 @@ export const PLANS: Record<Plan, PlanFeatures> = {
     priceCop: 80000,
     maxCashiers: 5,
     backgroundImage: true,
+    customStamp: true,
     milestoneRewards: true,
     campaignsPerMonth: 3,
     csvExport: true,
@@ -67,6 +71,7 @@ export const PLANS: Record<Plan, PlanFeatures> = {
     priceCop: 160000,
     maxCashiers: null,
     backgroundImage: true,
+    customStamp: true,
     milestoneRewards: true,
     campaignsPerMonth: null,
     csvExport: true,
@@ -114,6 +119,7 @@ export function planHighlights(plan: Plan): string[] {
     "Programa de sellos, app del cajero y QR para compartir",
     f.maxCashiers === null ? "Cajeros ilimitados" : `Dueño + ${f.maxCashiers} cajeros`,
     f.backgroundImage ? "Fondo de tarjeta con imagen" : "Logo y colores (fondo sólido)",
+    f.customStamp ? "Sello personalizado: tu logo, una imagen o un ícono" : "",
     f.milestoneRewards ? "Varios premios en la misma tarjeta (ej. a los 5 y a los 10 sellos)" : "",
     'Avisos automáticos en Wallet ("¡Te falta 1 sello!", "¡Premio disponible!")',
     f.campaignsPerMonth === null

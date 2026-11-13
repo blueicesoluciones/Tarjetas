@@ -1,11 +1,15 @@
-/** Distribución de círculos para la imagen de sellos (1032×336). */
+/**
+ * Distribución de círculos (tarjeta web e imagen de Wallet). Hasta 5 en una
+ * fila; de 6 a 12 en dos filas y más de 12 en tres, para que cada sello se vea
+ * grande en el celular.
+ */
 export function stampGrid(required: number) {
-  const rows = required <= 10 ? 1 : required <= 20 ? 2 : 3;
+  const rows = required <= 5 ? 1 : required <= 12 ? 2 : 3;
   const cols = Math.ceil(required / rows);
   return { rows, cols };
 }
 
-/** Ícono de regalo (trazos, viewBox 24) para los círculos con premio intermedio. */
+/** Ícono de regalo (trazos, viewBox 24) para los círculos con premio. */
 export const GIFT_ICON_PATHS = [
   "M3 9h18v3.5H3z",
   "M12 9v12",

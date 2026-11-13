@@ -2,7 +2,8 @@ import { ImageResponse } from "next/og";
 import { BACKGROUND_OVERLAY_ALPHA } from "@/lib/cards/card-style";
 import { GIFT_ICON_PATHS, stampGrid } from "@/lib/cards/stamp-layout";
 import { cardStampLogos } from "@/lib/cards/stamp-logos";
-import type { Plan } from "@/lib/plans";
+import { resolveStampStyle, STAMP_ICON_SHAPES } from "@/lib/cards/stamp-style";
+import { planFeatures, type Plan } from "@/lib/plans";
 import { getProgramMilestones } from "@/lib/rewards-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -29,7 +30,7 @@ async function logoDataUris(logos: (string | null)[]): Promise<(string | null)[]
         if (!res.ok || !type.startsWith("image/")) throw new Error(`HTTP ${res.status}`);
         loaded.set(url, `data:${type};base64,${Buffer.from(await res.arrayBuffer()).toString("base64")}`);
       } catch (err) {
-        console.error("[stamps] logo de sede", url, err instanceof Error ? err.message : err);
+        console.error("[stamps] imagen de sello", url, err instanceof Error ? err.message : err);
         loaded.set(url, null);
       }
     }),
@@ -55,11 +56,13 @@ export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[
 
   const { data: program } = await createAdminClient()
     .from("programs")
-    .select("stamps_required, business_id, businesses(primary_color, text_color, card_background_url, plan)")
+    .select("stamps_required, business_id, stamp_icon, stamp_image_url, businesses(primary_color, text_color, card_background_url, plan)")
     .eq("id", programId)
     .maybeSingle<{
       stamps_required: number;
       business_id: string;
+      stamp_icon: string;
+      stamp_image_url: string | null;
       businesses: { primary_color: string; text_color: string; card_background_url: string | null; plan: Plan };
     }>();
   if (!program) return new Response("Not found", { status: 404 });
@@ -78,6 +81,15 @@ export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[
     if (urls) logos = await logoDataUris(urls);
   }
 
+  // Diseño del sello (Medium y Pro): ícono o imagen propia, salvo donde haya logo de sede.
+  const stamp = resolveStampStyle(
+    planFeatures(program.businesses.plan).customStamp,
+    program.stamp_icon,
+    program.stamp_image_url,
+  );
+  const stampImage = stamp.imageUrl ? (await logoDataUris([stamp.imageUrl]))[0] : null;
+  const shape = STAMP_ICON_SHAPES[stamp.icon];
+
   const required = program.stamps_required;
   const milestones = (await getProgramMilestones(programId, program.businesses.plan, required)).map((m) => m.stampsAt);
   const bg = program.businesses.primary_color;
@@ -87,9 +99,9 @@ export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[
   const filled = Math.min(count, required);
   const { rows, cols } = stampGrid(required);
 
-  const padding = 40;
+  const padding = 28;
   const sidePadding = 64; // margen lateral amplio: ningún sello queda pegado al borde
-  const gap = rows === 1 ? 18 : 14;
+  const gap = rows === 1 ? 22 : 16;
   const bannerHeight = reward ? 56 : 0;
   const size = Math.floor(
     Math.min(
@@ -157,8 +169,9 @@ export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[
         {grid.map((row, r) => (
           <div key={r} style={{ display: "flex", gap }}>
             {row.map((on, i) => {
-              const isLast = r * cols + i === required - 1;
-              const isMilestone = milestones.includes(r * cols + i + 1);
+              const index = r * cols + i;
+              const hasReward = index === required - 1 || milestones.includes(index + 1);
+              const image = on ? (logos[index] ?? stampImage) : null;
               return (
                 <div
                   key={i}
@@ -174,10 +187,10 @@ export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[
                     opacity: on ? 1 : 0.55,
                   }}
                 >
-                  {on && logos[r * cols + i] ? (
+                  {image ? (
                     // eslint-disable-next-line @next/next/no-img-element -- Satori solo entiende <img>
                     <img
-                      src={logos[r * cols + i]!}
+                      src={image}
                       alt=""
                       width={size - border * 2}
                       height={size - border * 2}
@@ -185,17 +198,20 @@ export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[
                     />
                   ) : on ? (
                     <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24">
-                      <path d="M4 12.5l5 5L20 6.5" fill="none" stroke={bg} strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round" />
+                      <path
+                        d={shape.d}
+                        fill={shape.fill ? bg : "none"}
+                        stroke={shape.fill ? "none" : bg}
+                        strokeWidth={3.2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
                     </svg>
-                  ) : isMilestone ? (
+                  ) : hasReward ? (
                     <svg width={size * 0.52} height={size * 0.52} viewBox="0 0 24 24">
                       {GIFT_ICON_PATHS.map((d) => (
                         <path key={d} d={d} fill="none" stroke={fg} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                       ))}
-                    </svg>
-                  ) : isLast ? (
-                    <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24">
-                      <path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.5L12 17.3l-5.9 3.2 1.3-6.5-4.9-4.6 6.6-.8z" fill={fg} />
                     </svg>
                   ) : null}
                 </div>

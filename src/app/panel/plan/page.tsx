@@ -18,6 +18,7 @@ const PLAN_ROWS: { label: string; value: (f: PlanFeatures) => string | boolean }
   { label: "Avisos automáticos («¡Te falta 1 sello!», «¡Premio disponible!»)", value: () => true },
   { label: "Cajeros además del dueño", value: (f) => (f.maxCashiers === null ? "Ilimitados" : String(f.maxCashiers)) },
   { label: "Fondo de la tarjeta", value: (f) => (f.backgroundImage ? "Con imagen" : "Color sólido") },
+  { label: "Sello personalizado (tu logo, una imagen o un ícono)", value: (f) => f.customStamp },
   { label: "Premios en el camino (ej. a los 5 y a los 10 sellos)", value: (f) => f.milestoneRewards },
   {
     label: "Campañas por Wallet",

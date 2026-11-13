@@ -6,23 +6,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateTime } from "@/lib/admin/format";
 import { appUrl, serverEnv } from "@/lib/env";
 import { LEGACY_APPLE_ACTION, LEGACY_HOSTS, RESYNC_ALL_ACTION } from "@/lib/domains";
+import { addDays, localDateString, startOfLocalDay } from "@/lib/panel/format";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { appleWallet, googleWallet } from "@/lib/wallet";
 import type { BusinessStatus } from "@/types/db";
 import { ResyncAllForm } from "./domain-migration";
 
 export const metadata: Metadata = { title: "Administración" };
 
-function startOfTodayUtc() {
-  const d = new Date();
-  d.setUTCHours(0, 0, 0, 0);
-  return d;
-}
+/** Zona de referencia del resumen global (la de los negocios por defecto, Colombia). */
+const PLATFORM_TIME_ZONE = "America/Bogota";
 
 export default async function AdminDashboard() {
   const admin = createAdminClient();
-  const today = startOfTodayUtc();
-  const weekAgo = new Date(today.getTime() - 6 * 24 * 3600_000);
+  // «Hoy» en hora de Colombia: con medianoche UTC, desde las 7 p. m. los sellos
+  // contaban para el día siguiente.
+  const todayYmd = localDateString(new Date(), PLATFORM_TIME_ZONE);
+  const today = startOfLocalDay(todayYmd, PLATFORM_TIME_ZONE);
+  const weekAgo = startOfLocalDay(addDays(todayYmd, -6), PLATFORM_TIME_ZONE);
 
   const countEvents = (type: "stamp" | "redeem", since: Date) =>
     admin
@@ -46,14 +48,25 @@ export default async function AdminDashboard() {
       .order("updated_at", { ascending: false })
       .limit(10)
       .returns<{ id: string; wallet_sync_error: string; updated_at: string; businesses: { id: string; name: string } }[]>(),
-    admin.from("apple_device_registrations").select("serial_number").returns<{ serial_number: string }[]>(),
-    admin
-      .from("audit_logs")
-      .select("entity_id")
-      .eq("action", LEGACY_APPLE_ACTION)
-      .gte("created_at", legacySince)
-      .limit(5000)
-      .returns<{ entity_id: string }[]>(),
+    // Por páginas: PostgREST corta en 1000 filas.
+    fetchAllRows((from, to) =>
+      admin
+        .from("apple_device_registrations")
+        .select("serial_number")
+        .order("id")
+        .range(from, to)
+        .returns<{ serial_number: string }[]>(),
+    ),
+    fetchAllRows((from, to) =>
+      admin
+        .from("audit_logs")
+        .select("entity_id")
+        .eq("action", LEGACY_APPLE_ACTION)
+        .gte("created_at", legacySince)
+        .order("id")
+        .range(from, to)
+        .returns<{ entity_id: string }[]>(),
+    ),
     admin
       .from("audit_logs")
       .select("created_at")
@@ -62,8 +75,8 @@ export default async function AdminDashboard() {
       .limit(1)
       .maybeSingle<{ created_at: string }>(),
   ]);
-  const legacyCount = new Set((legacyHits.data ?? []).map((r) => r.entity_id)).size;
-  const appleCards = new Set((appleRegs.data ?? []).map((r) => r.serial_number)).size;
+  const legacyCount = new Set(legacyHits.map((r) => r.entity_id)).size;
+  const appleCards = new Set(appleRegs.map((r) => r.serial_number)).size;
   // Los iPhone solo consultan cuando reciben un aviso: «0» vale cuando ya pasaron
   // 14 días desde la actualización general (da tiempo a los que estaban apagados).
   const resyncAt = lastResync.data ? new Date(lastResync.data.created_at) : null;

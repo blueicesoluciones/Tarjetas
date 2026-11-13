@@ -38,6 +38,9 @@ export interface Program {
   is_active: boolean;
   google_class_id: string | null;
   design_version: number;
+  /** Diseño del sello: check | star | heart | image (Medium y Pro). */
+  stamp_icon: string;
+  stamp_image_url: string | null;
   winback_days: number | null;
   winback_message: string | null;
   created_at: string;

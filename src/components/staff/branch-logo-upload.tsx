@@ -73,7 +73,7 @@ export function BranchLogoUpload({
           variant="ghost"
           disabled={busy}
           onClick={() => {
-            if (confirm(`¿Quitar el logo de ${branch.name}? Sus sellos volverán a verse con el chulo.`)) {
+            if (confirm(`¿Quitar el logo de ${branch.name}? Sus sellos volverán a verse con el diseño normal del sello.`)) {
               void send({ method: "DELETE" }, `${endpoint}?branchId=${branch.id}`);
             }
           }}

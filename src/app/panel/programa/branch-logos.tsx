@@ -12,7 +12,7 @@ export function BranchLogos({ branches }: { branches: Branch[] }) {
       <CardContent className="space-y-4 text-sm">
         <p className="text-muted-foreground">
           Cada sello muestra el logo de la sede donde se puso, en la tarjeta web y en Google y Apple Wallet. Los sellos sin sede, o
-          de una sede sin logo, se ven con el chulo de siempre.
+          de una sede sin logo, se ven con el diseño del sello de arriba.
         </p>
         <ul className="divide-y rounded-lg border">
           {branches.map((b) => (
