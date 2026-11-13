@@ -4,10 +4,12 @@ import { Stat } from "@/components/admin/stat";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateTime } from "@/lib/admin/format";
-import { serverEnv } from "@/lib/env";
+import { appUrl, serverEnv } from "@/lib/env";
+import { LEGACY_APPLE_ACTION, LEGACY_HOSTS, RESYNC_ALL_ACTION } from "@/lib/domains";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { appleWallet, googleWallet } from "@/lib/wallet";
 import type { BusinessStatus } from "@/types/db";
+import { ResyncAllForm } from "./domain-migration";
 
 export const metadata: Metadata = { title: "Administración" };
 
@@ -30,7 +32,8 @@ export default async function AdminDashboard() {
       .is("undone_at", null)
       .gte("created_at", since.toISOString());
 
-  const [businesses, customers, stampsToday, stampsWeek, redeemsWeek, syncErrors] = await Promise.all([
+  const legacySince = new Date(today.getTime() - 14 * 86_400_000).toISOString();
+  const [businesses, customers, stampsToday, stampsWeek, redeemsWeek, syncErrors, appleRegs, legacyHits, lastResync] = await Promise.all([
     admin.from("businesses").select("status").returns<{ status: BusinessStatus }[]>(),
     admin.from("customers").select("id", { count: "exact", head: true }).is("deleted_at", null),
     countEvents("stamp", today),
@@ -43,7 +46,28 @@ export default async function AdminDashboard() {
       .order("updated_at", { ascending: false })
       .limit(10)
       .returns<{ id: string; wallet_sync_error: string; updated_at: string; businesses: { id: string; name: string } }[]>(),
+    admin.from("apple_device_registrations").select("serial_number").returns<{ serial_number: string }[]>(),
+    admin
+      .from("audit_logs")
+      .select("entity_id")
+      .eq("action", LEGACY_APPLE_ACTION)
+      .gte("created_at", legacySince)
+      .limit(5000)
+      .returns<{ entity_id: string }[]>(),
+    admin
+      .from("audit_logs")
+      .select("created_at")
+      .eq("action", RESYNC_ALL_ACTION)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<{ created_at: string }>(),
   ]);
+  const legacyCount = new Set((legacyHits.data ?? []).map((r) => r.entity_id)).size;
+  const appleCards = new Set((appleRegs.data ?? []).map((r) => r.serial_number)).size;
+  // Los iPhone solo consultan cuando reciben un aviso: «0» vale cuando ya pasaron
+  // 14 días desde la actualización general (da tiempo a los que estaban apagados).
+  const resyncAt = lastResync.data ? new Date(lastResync.data.created_at) : null;
+  const canRemoveLegacy = resyncAt !== null && legacyCount === 0 && today.getTime() - resyncAt.getTime() > 14 * 86_400_000;
 
   const byStatus: Record<BusinessStatus, number> = { trial: 0, active: 0, suspended: 0 };
   for (const b of businesses.data ?? []) byStatus[b.status]++;
@@ -97,6 +121,32 @@ export default async function AdminDashboard() {
         </Card>
 
         <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Cambio de dominio</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <p>
+              Dirección actual: <span className="font-medium">{appUrl()}</span>
+            </p>
+            <p>
+              Tarjetas de iPhone que usaron la dirección vieja ({LEGACY_HOSTS.join(", ")}) en los últimos 14 días:{" "}
+              <span className="font-semibold">
+                {legacyCount} de {appleCards}
+              </span>
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {resyncAt === null
+                ? "Toca «Actualizar todas las tarjetas» para que cada iPhone reciba su tarjeta con la dirección nueva."
+                : canRemoveLegacy
+                  ? "Ningún iPhone depende ya de la dirección vieja: se puede quitar de Vercel."
+                  : "No quites la dirección vieja de Vercel todavía. Se puede cuando este número esté en 0 y hayan pasado 14 días desde la actualización general (así alcanzan los celulares que estaban apagados o sin internet)."}
+              {resyncAt ? ` Última actualización general: ${formatDateTime(resyncAt.toISOString())}.` : ""}
+            </p>
+            <ResyncAllForm />
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-3">
           <CardHeader>
             <CardTitle>Errores recientes de sincronización</CardTitle>
           </CardHeader>

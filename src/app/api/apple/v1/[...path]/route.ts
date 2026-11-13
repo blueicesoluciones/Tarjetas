@@ -1,4 +1,6 @@
 import { after } from "next/server";
+import { writeAudit } from "@/lib/audit";
+import { LEGACY_APPLE_ACTION, LEGACY_HOSTS, requestHost } from "@/lib/domains";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { syncCardEverywhere } from "@/lib/wallet";
 import { appleConfig } from "@/lib/wallet/apple-config";
@@ -47,6 +49,7 @@ export async function POST(request: Request, ctx: Ctx) {
     const pushToken = body?.pushToken;
     if (!pushToken || !/^[0-9a-f]{16,200}$/i.test(pushToken)) return empty(400);
 
+    noteLegacy(request, card);
     const admin = createAdminClient();
     const { data: existing } = await admin
       .from("apple_device_registrations")
@@ -95,6 +98,12 @@ export async function DELETE(request: Request, ctx: Ctx) {
   const [, device, , passTypeId, serial] = path;
   const card = await findAppleCard(serial, request.headers.get("authorization"));
   if (!card) return empty(401);
+  // Al cambiar de dominio, el iPhone se da de baja en la dirección vieja y se
+  // registra en la nueva, en cualquier orden. Las dos usan esta misma tabla, así
+  // que una baja por la dirección vieja se ignora para no borrar el registro
+  // nuevo. Si el cliente de verdad quitó el pase, APNs responde 410 en el
+  // siguiente aviso y el registro se borra solo (apns.ts).
+  if (LEGACY_HOSTS.includes(requestHost(request))) return empty(200);
   await createAdminClient()
     .from("apple_device_registrations")
     .delete()
@@ -138,6 +147,7 @@ export async function GET(request: Request, ctx: Ctx) {
   if (path.length === 3 && path[0] === "passes") {
     const card = await findAppleCard(path[2], request.headers.get("authorization"));
     if (!card) return empty(401);
+    noteLegacy(request, card);
     const ifModifiedSince = request.headers.get("if-modified-since");
     const lastModified = new Date(card.updatedAt);
     lastModified.setMilliseconds(0);
@@ -161,4 +171,21 @@ export async function GET(request: Request, ctx: Ctx) {
   }
 
   return empty(404);
+}
+
+/**
+ * Anota cuando un iPhone usa la dirección vieja, para saber en /admin cuándo ya
+ * nadie depende de ella y se puede quitar de Vercel.
+ */
+function noteLegacy(request: Request, card: { id: string; businessId?: string }) {
+  if (!LEGACY_HOSTS.includes(requestHost(request))) return;
+  after(() =>
+    writeAudit({
+      businessId: card.businessId ?? null,
+      actorId: null,
+      action: LEGACY_APPLE_ACTION,
+      entityType: "card",
+      entityId: card.id,
+    }),
+  );
 }

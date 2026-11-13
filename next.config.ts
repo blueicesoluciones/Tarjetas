@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { LEGACY_HOSTS, PRIMARY_HOST } from "./src/lib/domains";
 
 const isDev = process.env.NODE_ENV !== "production";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
@@ -37,6 +38,19 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   images: {
     remotePatterns: supabaseOrigin ? [new URL(`${supabaseOrigin}/storage/v1/object/public/**`)] : [],
+  },
+  async redirects() {
+    // Dirección vieja: las páginas pasan al dominio principal. /api/* se queda
+    // (Web Service de Apple de los pases ya emitidos e imágenes de Google).
+    return LEGACY_HOSTS.flatMap((host) => [
+      { source: "/", has: [{ type: "host" as const, value: host }], destination: `https://${PRIMARY_HOST}/`, permanent: true },
+      {
+        source: "/:path((?!api/).+)",
+        has: [{ type: "host" as const, value: host }],
+        destination: `https://${PRIMARY_HOST}/:path`,
+        permanent: true,
+      },
+    ]);
   },
   async headers() {
     return [
