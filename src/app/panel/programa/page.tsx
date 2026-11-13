@@ -16,7 +16,7 @@ import { RewardsForm } from "./rewards-form";
 import { StampStyleForm } from "./stamp-style-form";
 import { WinbackForm } from "./winback-form";
 
-export const metadata: Metadata = { title: "Programa" };
+export const metadata: Metadata = { title: "Mi tarjeta" };
 
 type Section = "tarjeta" | "sellos" | "premios" | "avisos";
 
@@ -44,7 +44,7 @@ export default async function ProgramPage({ searchParams }: PageProps<"/panel/pr
   return (
     <>
       <PageHeader
-        title="Programa"
+        title="Mi tarjeta"
         description="Las reglas de tu tarjeta, cómo se ve y lo que reciben tus clientes."
       />
       <SectionTabs tabs={tabs} active={section} />

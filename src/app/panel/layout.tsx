@@ -17,9 +17,9 @@ const NAV: NavGroup[] = [
     ],
   },
   {
-    label: "Tu tarjeta",
+    label: "Fidelización",
     items: [
-      { href: "/panel/programa", label: "Programa", icon: "card" },
+      { href: "/panel/programa", label: "Mi tarjeta", icon: "card" },
       { href: "/panel/compartir", label: "Compartir", icon: "share" },
       { href: "/panel/campanas", label: "Campañas", icon: "campaigns" },
     ],
