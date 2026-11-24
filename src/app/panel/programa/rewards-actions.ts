@@ -23,7 +23,7 @@ const listSchema = z
       description: z.string().trim().max(80, "Máximo 80 caracteres por premio"),
     }),
   )
-  .max(10);
+  .max(29);
 
 export async function saveRewards(_prev: RewardsFormState, formData: FormData): Promise<RewardsFormState> {
   const ctx = await requireStaff(["owner"], { needsBusiness: true });
@@ -39,12 +39,13 @@ export async function saveRewards(_prev: RewardsFormState, formData: FormData): 
 
   const { business, program } = await getBusinessWithProgram(ctx.businessId!);
   if (!business || !program) return { error: "Programa no encontrado" };
-  if (!planFeatures(business.plan).milestoneRewards) {
+  const features = planFeatures(business.plan);
+  if (!features.milestoneRewards) {
     return { error: "Los premios intermedios están disponibles desde el plan Medium" };
   }
 
   const list = parsed.data.sort((a, b) => a.stampsAt - b.stampsAt);
-  const invalid = validateMilestones(list, program.stamps_required);
+  const invalid = validateMilestones(list, program.stamps_required, features.maxMilestones);
   if (invalid) return { error: invalid };
 
   const admin = createAdminClient();

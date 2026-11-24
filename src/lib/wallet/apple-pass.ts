@@ -60,10 +60,26 @@ export async function findAppleCard(serialNumber: string, authHeader: string | n
   return { id: data.id, serialNumber: data.apple_serial_number, authToken: data.apple_auth_token, updatedAt: data.updated_at };
 }
 
-function rgb(hex: string) {
+function channels(hex: string): [number, number, number] | null {
   const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
-  if (!m) return "rgb(0, 0, 0)";
-  return `rgb(${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)})`;
+  return m ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)] : null;
+}
+
+function rgb(hex: string) {
+  const c = channels(hex);
+  return c ? `rgb(${c[0]}, ${c[1]}, ${c[2]})` : "rgb(0, 0, 0)";
+}
+
+/**
+ * Color de las etiquetas (SELLOS, CLIENTE…): el del texto mezclado un 35 % con
+ * el fondo, para que los valores resalten sobre sus etiquetas.
+ */
+function labelRgb(text: string, background: string) {
+  const t = channels(text);
+  const b = channels(background);
+  if (!t || !b) return rgb(text);
+  const c = t.map((v, i) => Math.round(v + (b[i] - v) * 0.35));
+  return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
 }
 
 async function fetchImage(url: string): Promise<Buffer> {
@@ -168,7 +184,7 @@ export async function buildApplePass(cardId: string, passTypeId?: string): Promi
       logoText: data.businessName,
       backgroundColor: rgb(data.primaryColor),
       foregroundColor: rgb(data.textColor),
-      labelColor: rgb(data.textColor),
+      labelColor: labelRgb(data.textColor, data.primaryColor),
       sharingProhibited: true,
       ...(replaced ? { voided: true } : {}),
     },

@@ -20,7 +20,7 @@ function enabledProviders() {
  * Versión del dibujo de la imagen de sellos. Subirla cuando cambie el diseño de
  * /api/img/stamps para que Google descargue la imagen nueva (la cachea por URL).
  */
-const STAMPS_IMAGE_RENDER = 4;
+const STAMPS_IMAGE_RENDER = 5;
 
 /**
  * Con `logos` (multisede con logos por sede) la imagen es de la tarjeta: lleva su

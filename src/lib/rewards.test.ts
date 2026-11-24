@@ -21,6 +21,11 @@ describe("premios intermedios", () => {
     expect(validateMilestones([ms[0], { ...ms[0] }], 10)).toMatch(/dos premios/);
     expect(validateMilestones([{ stampsAt: 3, description: "  " }], 10)).toMatch(/Escribe/);
   });
+  it("aplica el límite del plan (null = sin límite)", () => {
+    const many = Array.from({ length: 8 }, (_, i) => ({ stampsAt: i + 1, description: "x" }));
+    expect(validateMilestones(many, 10, 5)).toMatch(/hasta 5/);
+    expect(validateMilestones(many, 10, null)).toBeNull();
+  });
   it("detecta la meta alcanzada con un sello", () => {
     expect(reachedMilestone(ms, 4, 5)?.description).toBe("Descuento");
     expect(reachedMilestone(ms, 5, 6)).toBeUndefined();

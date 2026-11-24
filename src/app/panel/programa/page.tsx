@@ -78,6 +78,7 @@ export default async function ProgramPage({ searchParams }: PageProps<"/panel/pr
               initial={milestones}
               stampsRequired={program.stamps_required}
               finalReward={program.reward_description}
+              max={features.maxMilestones}
             />
           ) : (
             <LockedFeature

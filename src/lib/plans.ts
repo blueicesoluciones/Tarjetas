@@ -19,6 +19,8 @@ export interface PlanFeatures {
   customStamp: boolean;
   /** Premios intermedios en la misma tarjeta (ej. 5 sellos y 10 sellos). Igual en la migración 08. */
   milestoneRewards: boolean;
+  /** Cuántos premios intermedios. null = sin límite (uno por cada sello antes del final). */
+  maxMilestones: number | null;
   /** Campañas por Wallet por mes calendario. 0 = no incluye, null = sin límite. */
   campaignsPerMonth: number | null;
   /** Exportar clientes a CSV. */
@@ -43,6 +45,7 @@ export const PLANS: Record<Plan, PlanFeatures> = {
     backgroundImage: false,
     customStamp: false,
     milestoneRewards: false,
+    maxMilestones: 0,
     campaignsPerMonth: 0,
     csvExport: false,
     metrics: "basic",
@@ -58,6 +61,7 @@ export const PLANS: Record<Plan, PlanFeatures> = {
     backgroundImage: true,
     customStamp: true,
     milestoneRewards: true,
+    maxMilestones: 5,
     campaignsPerMonth: 3,
     csvExport: true,
     metrics: "advanced",
@@ -73,6 +77,7 @@ export const PLANS: Record<Plan, PlanFeatures> = {
     backgroundImage: true,
     customStamp: true,
     milestoneRewards: true,
+    maxMilestones: null,
     campaignsPerMonth: null,
     csvExport: true,
     metrics: "full",
@@ -120,7 +125,11 @@ export function planHighlights(plan: Plan): string[] {
     f.maxCashiers === null ? "Cajeros ilimitados" : `Dueño + ${f.maxCashiers} cajeros`,
     f.backgroundImage ? "Fondo de tarjeta con imagen" : "Logo y colores (fondo sólido)",
     f.customStamp ? "Sello personalizado: tu logo, una imagen o un ícono" : "",
-    f.milestoneRewards ? "Varios premios en la misma tarjeta (ej. a los 5 y a los 10 sellos)" : "",
+    f.milestoneRewards
+      ? f.maxMilestones === null
+        ? "Premios en el camino sin límite en la misma tarjeta"
+        : `Hasta ${f.maxMilestones} premios en el camino en la misma tarjeta (ej. a los 5 y a los 10 sellos)`
+      : "",
     'Avisos automáticos en Wallet ("¡Te falta 1 sello!", "¡Premio disponible!")',
     f.campaignsPerMonth === null
       ? "Campañas por Wallet sin límite mensual"

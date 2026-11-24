@@ -159,7 +159,7 @@ const PLAN_CARDS: PlanCard[] = [
     featured: true,
     items: [
       `${PLANS.medium.campaignsPerMonth} campañas al mes al celular de tus clientes`,
-      "Premios en el camino (ej. descuento a los 5 sellos y premio a los 10)",
+      `Hasta ${PLANS.medium.maxMilestones} premios en el camino (ej. descuento a los 5 sellos y premio a los 10)`,
       "Sello personalizado: tu logo, una imagen o un ícono",
       "Tarjeta con imagen de fondo",
       `Hasta ${PLANS.medium.maxCashiers} cajeros`,
@@ -173,6 +173,7 @@ const PLAN_CARDS: PlanCard[] = [
     intro: "Todo lo de Medium, más:",
     items: [
       "Campañas sin límite",
+      "Premios en el camino sin límite",
       "«Te extrañamos» automático para recuperar clientes",
       "Varias sedes, con el logo de cada sede en sus sellos",
       "Cajeros ilimitados",

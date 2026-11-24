@@ -505,6 +505,7 @@ export interface WalletProvider {
 - Tamaño recomendado apto para la imagen "hero" de Google (relación ancha, ej. 1032×336) y reutilizable como "strip" de Apple.
 - Encabezado `Cache-Control: public, max-age=31536000, immutable` (la URL cambia con el conteo y la versión, así que es seguro).
 - Debe ser accesible públicamente por HTTPS (Google la descarga).
+- Diseño: degradado suave del color del negocio, los sellos sobre un panel translúcido, los puestos con sombra e inclinación leve (como un sello a mano), los vacíos punteados y los de premio con regalo (el próximo premio, más marcado). Al cambiar el dibujo se sube `STAMPS_IMAGE_RENDER` (`src/lib/wallet/index.ts`) para que la URL cambie. En Apple, las etiquetas del pase van en el color del texto atenuado hacia el fondo.
 
 ---
 
@@ -816,7 +817,7 @@ Trabajar **una tarea a la vez**, con commit al terminar cada una. Cada fase tien
 | Cajeros activos (además del dueño) | 2 | 5 | Ilimitados |
 | Fondo de tarjeta | Color sólido | Imagen | Imagen |
 | Sello personalizado (chulo, estrella, corazón, logo del negocio o imagen propia; Mi tarjeta → «Sellos») | — | ✓ | ✓ (además, logo por sede) |
-| Premios intermedios en la misma tarjeta (ej. 5 sellos descuento, 10 sellos premio final; no restan sellos, se reinician al canjear el final) | — | ✓ (hasta 5) | ✓ (hasta 5) |
+| Premios intermedios en la misma tarjeta (ej. 5 sellos descuento, 10 sellos premio final; no restan sellos, se reinician al canjear el final) | — | ✓ (hasta 5) | ✓ (sin límite: uno por cada sello antes del final) |
 | Campañas por Wallet (solo a quienes aceptaron promociones) | — | 3 al mes | Sin límite mensual |
 | Exportar clientes a CSV | — | ✓ | ✓ |
 | Panel | Información básica | Métricas detalladas | Métricas completas, gráficos y ranking |

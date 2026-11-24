@@ -13,8 +13,6 @@ export interface MilestoneStatus extends Milestone {
   available: boolean;
 }
 
-export const MAX_MILESTONES = 5;
-
 export function milestoneStatuses(milestones: Milestone[], count: number, claimed: number[]): MilestoneStatus[] {
   return [...milestones]
     .sort((a, b) => a.stampsAt - b.stampsAt)
@@ -24,9 +22,18 @@ export function milestoneStatuses(milestones: Milestone[], count: number, claime
     });
 }
 
-/** Valida la lista que guarda el dueño. Devuelve el error o null. */
-export function validateMilestones(milestones: Milestone[], stampsRequired: number): string | null {
-  if (milestones.length > MAX_MILESTONES) return `Máximo ${MAX_MILESTONES} premios intermedios`;
+/**
+ * Valida la lista que guarda el dueño. `max` sale del plan (null = sin límite).
+ * Devuelve el error o null.
+ */
+export function validateMilestones(
+  milestones: Milestone[],
+  stampsRequired: number,
+  max: number | null = null,
+): string | null {
+  if (max !== null && milestones.length > max) {
+    return `Tu plan permite hasta ${max} premios en el camino. Con el plan Pro no hay límite`;
+  }
   const seen = new Set<number>();
   for (const m of milestones) {
     if (!Number.isInteger(m.stampsAt) || m.stampsAt < 1 || m.stampsAt >= stampsRequired) {

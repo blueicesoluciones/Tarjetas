@@ -7,17 +7,20 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { MAX_MILESTONES, type Milestone } from "@/lib/rewards";
+import { type Milestone } from "@/lib/rewards";
 import { saveRewards, type RewardsFormState } from "./rewards-actions";
 
 export function RewardsForm({
   initial,
   stampsRequired,
   finalReward,
+  max,
 }: {
   initial: Milestone[];
   stampsRequired: number;
   finalReward: string;
+  /** Límite del plan; null = sin límite. */
+  max: number | null;
 }) {
   const router = useRouter();
   const [state, action, pending] = useActionState<RewardsFormState, FormData>(saveRewards, {});
@@ -97,7 +100,7 @@ export function RewardsForm({
             </li>
           </ul>
           <div className="flex flex-wrap gap-2">
-            {rows.length < MAX_MILESTONES ? (
+            {rows.length < Math.min(max ?? Infinity, stampsRequired - 1) ? (
               <Button type="button" variant="outline" onClick={add}>
                 <Plus className="size-4" /> Agregar premio
               </Button>

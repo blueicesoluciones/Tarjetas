@@ -38,6 +38,30 @@ async function logoDataUris(logos: (string | null)[]): Promise<(string | null)[]
   return logos.map((l) => (l ? (loaded.get(l) ?? null) : null));
 }
 
+/** "#abc" o "#aabbcc" → [r, g, b]. */
+function rgbOf(hex: string): [number, number, number] {
+  let h = hex.replace("#", "");
+  if (h.length === 3) h = [...h].map((c) => c + c).join("");
+  const n = /^[0-9a-f]{6}$/i.test(h) ? parseInt(h, 16) : 0;
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function rgba(hex: string, alpha: number): string {
+  const [r, g, b] = rgbOf(hex);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+/** Mezcla `hex` con `toward` (0 = hex, 1 = toward). */
+function mix(hex: string, toward: string, amount: number): string {
+  const a = rgbOf(hex);
+  const b = rgbOf(toward);
+  const c = a.map((v, i) => Math.round(v + (b[i] - v) * amount));
+  return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+}
+
+/** Inclinación leve y fija de cada sello puesto, como un sello de caucho a mano. */
+const TILTS = [-7, 4, -3, 6, -5, 3, -6, 5, -2, 7];
+
 export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[programId]/[count]">) {
   const { programId, count: countParam } = await ctx.params;
   const params = new URL(request.url).searchParams;
@@ -102,17 +126,27 @@ export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[
   const padding = 28;
   const sidePadding = 64; // margen lateral amplio: ningún sello queda pegado al borde
   const gap = rows === 1 ? 22 : 16;
-  const bannerHeight = reward ? 56 : 0;
+  const bannerHeight = reward ? 60 : 0;
+  // Panel translúcido detrás de los sellos.
+  const panelPad = rows === 1 ? 22 : 16;
   const size = Math.floor(
     Math.min(
-      (WIDTH - sidePadding * 2 - gap * (cols - 1)) / cols,
-      (HEIGHT - padding * 2 - bannerHeight - gap * (rows - 1)) / rows,
+      (WIDTH - sidePadding * 2 - panelPad * 2 - gap * (cols - 1)) / cols,
+      (HEIGHT - padding * 2 - panelPad * 2 - bannerHeight - gap * (rows - 1)) / rows,
     ),
   );
 
-  const border = Math.max(3, Math.round(size / 18));
+  const border = Math.max(3, Math.round(size / 20));
   const circles = Array.from({ length: required }, (_, i) => i < filled);
   const grid = Array.from({ length: rows }, (_, r) => circles.slice(r * cols, (r + 1) * cols));
+  // Próximo círculo con premio (intermedio o final) aún sin llenar: se resalta un poco.
+  const nextPrize = Array.from({ length: required }, (_, i) => i).find(
+    (i) => i >= filled && (i === required - 1 || milestones.includes(i + 1)),
+  );
+  // Sombra del sello puesto: más marcada sobre fondos claros.
+  const [br, bgG, bb] = rgbOf(bg);
+  const lightBg = 0.299 * br + 0.587 * bgG + 0.114 * bb > 160;
+  const stampShadow = `0 ${Math.round(size / 16)}px ${Math.round(size / 7)}px rgba(0, 0, 0, ${lightBg ? 0.18 : 0.32})`;
 
   return new ImageResponse(
     (
@@ -125,7 +159,14 @@ export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[
           alignItems: "center",
           justifyContent: "center",
           backgroundColor: bg,
-          gap,
+          // Degradado suave del mismo color: da profundidad sin cambiar la marca.
+          // (Satori falla con propiedades en undefined: se agrega solo si aplica.)
+          ...(backgroundUrl
+            ? {}
+            : {
+                backgroundImage: `linear-gradient(160deg, ${mix(bg, fg, 0.07)} 0%, ${bg} 45%, ${mix(bg, "#000000", 0.14)} 100%)`,
+              }),
+          gap: reward ? 14 : 0,
           position: "relative",
         }}
       >
@@ -166,72 +207,105 @@ export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[
             }}
           />
         ) : null}
-        {grid.map((row, r) => (
-          <div key={r} style={{ display: "flex", gap }}>
-            {row.map((on, i) => {
-              const index = r * cols + i;
-              const hasReward = index === required - 1 || milestones.includes(index + 1);
-              const image = on ? (logos[index] ?? stampImage) : null;
-              return (
-                <div
-                  key={i}
-                  style={{
-                    width: size,
-                    height: size,
-                    borderRadius: size,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    border: `${border}px solid ${fg}`,
-                    backgroundColor: on ? fg : "transparent",
-                    opacity: on ? 1 : 0.55,
-                  }}
-                >
-                  {image ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- Satori solo entiende <img>
-                    <img
-                      src={image}
-                      alt=""
-                      width={size - border * 2}
-                      height={size - border * 2}
-                      style={{ width: size - border * 2, height: size - border * 2, borderRadius: size, objectFit: "cover" }}
-                    />
-                  ) : on ? (
-                    <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24">
-                      <path
-                        d={shape.d}
-                        fill={shape.fill ? bg : "none"}
-                        stroke={shape.fill ? "none" : bg}
-                        strokeWidth={3.2}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap,
+            padding: panelPad,
+            borderRadius: Math.round(size / 2 + panelPad),
+            backgroundColor: rgba(fg, 0.08),
+            border: `2px solid ${rgba(fg, 0.12)}`,
+          }}
+        >
+          {grid.map((row, r) => (
+            <div key={r} style={{ display: "flex", gap }}>
+              {row.map((on, i) => {
+                const index = r * cols + i;
+                const hasReward = index === required - 1 || milestones.includes(index + 1);
+                const image = on ? (logos[index] ?? stampImage) : null;
+                const isNext = index === nextPrize;
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      width: size,
+                      height: size,
+                      borderRadius: size,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      ...(on
+                        ? {
+                            backgroundColor: fg,
+                            border: `${border}px solid ${fg}`,
+                            boxShadow: stampShadow,
+                            transform: `rotate(${TILTS[index % TILTS.length]}deg)`,
+                          }
+                        : hasReward
+                          ? {
+                              backgroundColor: rgba(fg, isNext ? 0.22 : 0.14),
+                              border: `${border}px solid ${rgba(fg, isNext ? 0.95 : 0.7)}`,
+                            }
+                          : {
+                              backgroundColor: rgba(fg, 0.1),
+                              border: `${Math.max(2, Math.round(border * 0.7))}px dashed ${rgba(fg, 0.45)}`,
+                            }),
+                    }}
+                  >
+                    {image ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- Satori solo entiende <img>
+                      <img
+                        src={image}
+                        alt=""
+                        width={size - border * 2}
+                        height={size - border * 2}
+                        style={{ width: size - border * 2, height: size - border * 2, borderRadius: size, objectFit: "cover" }}
                       />
-                    </svg>
-                  ) : hasReward ? (
-                    <svg width={size * 0.52} height={size * 0.52} viewBox="0 0 24 24">
-                      {GIFT_ICON_PATHS.map((d) => (
-                        <path key={d} d={d} fill="none" stroke={fg} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                      ))}
-                    </svg>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-        ))}
+                    ) : on ? (
+                      <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24">
+                        <path
+                          d={shape.d}
+                          fill={shape.fill ? bg : "none"}
+                          stroke={shape.fill ? "none" : bg}
+                          strokeWidth={3.2}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    ) : hasReward ? (
+                      <svg width={size * 0.52} height={size * 0.52} viewBox="0 0 24 24">
+                        {GIFT_ICON_PATHS.map((d) => (
+                          <path key={d} d={d} fill="none" stroke={fg} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                        ))}
+                      </svg>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
         {reward ? (
           <div
             style={{
               display: "flex",
-              marginTop: 6,
-              padding: "8px 24px",
+              alignItems: "center",
+              gap: 12,
+              padding: "8px 26px 8px 20px",
               borderRadius: 999,
               backgroundColor: fg,
               color: bg,
               fontSize: 30,
               fontWeight: 700,
+              boxShadow: stampShadow,
             }}
           >
+            <svg width={32} height={32} viewBox="0 0 24 24">
+              {GIFT_ICON_PATHS.map((d) => (
+                <path key={d} d={d} fill="none" stroke={bg} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+              ))}
+            </svg>
             ¡Premio disponible!
           </div>
         ) : null}
