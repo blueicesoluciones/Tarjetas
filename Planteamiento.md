@@ -505,7 +505,7 @@ export interface WalletProvider {
 - Tamaño recomendado apto para la imagen "hero" de Google (relación ancha, ej. 1032×336) y reutilizable como "strip" de Apple.
 - Encabezado `Cache-Control: public, max-age=31536000, immutable` (la URL cambia con el conteo y la versión, así que es seguro).
 - Debe ser accesible públicamente por HTTPS (Google la descarga).
-- Diseño: degradado suave del color del negocio, los sellos sobre un panel translúcido, los puestos con sombra e inclinación leve (como un sello a mano), los vacíos punteados y los de premio con regalo (el próximo premio, más marcado). Al cambiar el dibujo se sube `STAMPS_IMAGE_RENDER` (`src/lib/wallet/index.ts`) para que la URL cambie. En Apple, las etiquetas del pase van en el color del texto atenuado hacia el fondo.
+- Diseño («camino»): los sellos de cada fila van unidos por una línea, sólida en el tramo recorrido; los puestos llevan sombra e inclinación leve (como un sello a mano); los vacíos muestran su número; los de premio llevan un regalo (el próximo, con un halo) y, ya ganados, una insignia de regalo. Fondo: degradado suave del color del negocio o la foto de fondo con su velo. Al cambiar el dibujo se sube `STAMPS_IMAGE_RENDER` (`src/lib/cards/stamp-layout.ts`) para que la URL cambie. En Apple, debajo de los sellos van «Próximo premio» y «Te faltan» (o «Tu premio» y «Para cobrar»), y abajo el cliente (`frontFields`); las etiquetas van en el color del texto atenuado hacia el fondo. La vista previa de Mi tarjeta muestra la imagen real cuando los colores y sellos están guardados.
 
 ---
 

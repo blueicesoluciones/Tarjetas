@@ -121,12 +121,24 @@ export function appleStatusLine(data: WalletCardData): string {
   return "Muestra este código en caja para sumar sellos";
 }
 
-/** Texto del frente: el próximo premio (los sellos se ven en la franja y en SELLOS). */
-export function nextRewardLine(data: WalletCardData): string {
-  if (data.rewardAvailable) return `¡Listo! ${data.rewardDescription}`;
+/**
+ * Frente del pase, debajo de los sellos: a la izquierda el premio (el que está
+ * listo para cobrar o el próximo) y a la derecha cuánto falta o «Para cobrar».
+ */
+export function frontFields(data: WalletCardData): { reward: { label: string; value: string }; status: { label: string; value: string } } {
+  if (data.rewardAvailable) {
+    return { reward: { label: "TU PREMIO", value: data.rewardDescription }, status: { label: "ESTADO", value: "Para cobrar" } };
+  }
   const pending = data.milestones.find((m) => m.available);
-  if (pending) return `¡Listo! ${pending.description}`;
-  return nextGoal(data.milestones, data.stampsCount, data.stampsRequired, data.rewardDescription).description;
+  if (pending) {
+    return { reward: { label: "TU PREMIO", value: pending.description }, status: { label: "ESTADO", value: "Para cobrar" } };
+  }
+  const goal = nextGoal(data.milestones, data.stampsCount, data.stampsRequired, data.rewardDescription);
+  const left = Math.max(1, goal.stampsAt - data.stampsCount);
+  return {
+    reward: { label: "PRÓXIMO PREMIO", value: goal.description },
+    status: { label: "TE FALTAN", value: left === 1 ? "1 sello" : `${left} sellos` },
+  };
 }
 
 /** ¿El iPhone ya registró el pase con este identificador? */
@@ -196,14 +208,15 @@ export async function buildApplePass(cardId: string, passTypeId?: string): Promi
     label: "SELLOS",
     value: `${data.stampsCount}/${data.stampsRequired}`,
   });
-  pass.secondaryFields.push({ key: "customer", label: "CLIENTE", value: data.customerName });
-  // Frente: el próximo premio. Sin changeMessage para no avisar en cada sello.
-  pass.secondaryFields.push({
-    key: "next",
-    label: "PRÓXIMO PREMIO",
-    value: nextRewardLine(data),
-    textAlignment: "PKTextAlignmentRight",
-  });
+  // Frente, debajo de los sellos: premio y cuánto falta (lo que más mira el
+  // cliente) y, en la fila de abajo, su nombre para que el cajero lo confirme.
+  // Sin changeMessage para no avisar en cada sello.
+  const front = frontFields(data);
+  pass.secondaryFields.push(
+    { key: "next", ...front.reward },
+    { key: "left", ...front.status, textAlignment: "PKTextAlignmentRight" },
+  );
+  pass.auxiliaryFields.push({ key: "customer", label: "CLIENTE", value: data.customerName });
 
   const rewards = [
     ...data.milestones.map(
