@@ -51,17 +51,6 @@ function rgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-/** Mezcla `hex` con `toward` (0 = hex, 1 = toward). */
-function mix(hex: string, toward: string, amount: number): string {
-  const a = rgbOf(hex);
-  const b = rgbOf(toward);
-  const c = a.map((v, i) => Math.round(v + (b[i] - v) * amount));
-  return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
-}
-
-/** Inclinación leve y fija de cada sello puesto, como un sello de caucho a mano. */
-const TILTS = [-7, 4, -3, 6, -5, 3, -6, 5, -2, 7];
-
 export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[programId]/[count]">) {
   const { programId, count: countParam } = await ctx.params;
   const params = new URL(request.url).searchParams;
@@ -123,9 +112,9 @@ export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[
   const filled = Math.min(count, required);
   const { rows, cols } = stampGrid(required);
 
-  const padding = 28;
-  const sidePadding = 64; // margen lateral amplio: ningún sello queda pegado al borde
-  const gap = rows === 1 ? 30 : 22;
+  const padding = 40;
+  const sidePadding = 90; // aire a los lados: los sellos no llenan todo el ancho
+  const gap = rows === 1 ? 40 : 30;
   const bannerHeight = reward ? 60 : 0;
   const size = Math.floor(
     Math.min(
@@ -134,26 +123,22 @@ export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[
     ),
   );
 
-  const border = Math.max(3, Math.round(size / 22));
-  const track = Math.max(4, Math.round(size / 14)); // grosor de la línea del camino
+  // Trazos finos y parejos: aro de los sellos y línea del camino.
+  const border = Math.max(2, Math.round(size / 40));
+  const track = Math.max(2, Math.round(size / 48));
   const circles = Array.from({ length: required }, (_, i) => i < filled);
   const grid = Array.from({ length: rows }, (_, r) => circles.slice(r * cols, (r + 1) * cols));
   // Próximo círculo con premio (intermedio o final) aún sin llenar: se resalta.
   const nextPrize = Array.from({ length: required }, (_, i) => i).find(
     (i) => i >= filled && (i === required - 1 || milestones.includes(i + 1)),
   );
-  const gift = (color: string, px: number, stroke = 2) => (
+  const gift = (color: string, px: number, stroke = 1.6) => (
     <svg width={px} height={px} viewBox="0 0 24 24">
       {GIFT_ICON_PATHS.map((d) => (
         <path key={d} d={d} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" />
       ))}
     </svg>
   );
-  // Sombra del sello puesto: más marcada sobre fondos claros.
-  const [br, bgG, bb] = rgbOf(bg);
-  const lightBg = 0.299 * br + 0.587 * bgG + 0.114 * bb > 160;
-  const stampShadow = `0 ${Math.round(size / 16)}px ${Math.round(size / 7)}px rgba(0, 0, 0, ${lightBg ? 0.18 : 0.32})`;
-
   return new ImageResponse(
     (
       <div
@@ -165,14 +150,7 @@ export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[
           alignItems: "center",
           justifyContent: "center",
           backgroundColor: bg,
-          // Degradado suave del mismo color: da profundidad sin cambiar la marca.
-          // (Satori falla con propiedades en undefined: se agrega solo si aplica.)
-          ...(backgroundUrl
-            ? {}
-            : {
-                backgroundImage: `linear-gradient(160deg, ${mix(bg, fg, 0.07)} 0%, ${bg} 45%, ${mix(bg, "#000000", 0.14)} 100%)`,
-              }),
-          gap: reward ? 14 : 0,
+          gap: reward ? 18 : 0,
           position: "relative",
         }}
       >
@@ -218,36 +196,23 @@ export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[
           {grid.map((row, r) => {
             const done = row.filter(Boolean).length;
             const step = size + gap;
-            // Tramo recorrido: del primer sello al último puesto y, si la fila sigue, medio paso más.
-            const walked = done === 0 ? 0 : done === row.length ? (row.length - 1) * step : (done - 1) * step + step / 2;
             return (
               <div key={r} style={{ display: "flex", gap, position: "relative" }}>
-                {row.length > 1 ? (
+                {/* Camino: un tramo fino entre cada par de sellos; sólido si ya se recorrió. */}
+                {row.slice(1).map((_, j) => (
                   <div
+                    key={`t${j}`}
                     style={{
                       position: "absolute",
                       top: size / 2 - track / 2,
-                      left: size / 2,
-                      width: (row.length - 1) * step,
+                      left: j * step + size + Math.round(gap * 0.18),
+                      width: gap - Math.round(gap * 0.36),
                       height: track,
                       borderRadius: track,
-                      backgroundColor: rgba(fg, 0.22),
+                      backgroundColor: j + 1 < done ? fg : rgba(fg, 0.3),
                     }}
                   />
-                ) : null}
-                {walked > 0 ? (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: size / 2 - track / 2,
-                      left: size / 2,
-                      width: walked,
-                      height: track,
-                      borderRadius: track,
-                      backgroundColor: fg,
-                    }}
-                  />
-                ) : null}
+                ))}
                 {row.map((on, i) => {
                   const index = r * cols + i;
                   const hasReward = index === required - 1 || milestones.includes(index + 1);
@@ -264,20 +229,12 @@ export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[
                         alignItems: "center",
                         justifyContent: "center",
                         position: "relative",
+                        // Sin rellenos ni sombras: el puesto es un disco sólido y el
+                        // pendiente, solo un aro fino.
                         ...(on
-                          ? {
-                              backgroundColor: fg,
-                              border: `${border}px solid ${fg}`,
-                              boxShadow: stampShadow,
-                              transform: `rotate(${TILTS[index % TILTS.length]}deg)`,
-                            }
+                          ? { backgroundColor: fg }
                           : {
-                              // Relleno del color de la tarjeta: la línea no se ve a través.
-                              backgroundColor: backgroundUrl ? rgba(bg, 0.92) : mix(bg, fg, 0.06),
-                              border: hasReward
-                                ? `${border + 1}px solid ${fg}`
-                                : `${Math.max(2, border - 1)}px solid ${rgba(fg, 0.35)}`,
-                              ...(isNext ? { boxShadow: `0 0 0 ${Math.round(size / 11)}px ${rgba(fg, 0.18)}` } : {}),
+                              border: `${border}px solid ${hasReward || isNext ? fg : rgba(fg, 0.45)}`,
                             }),
                       }}
                     >
@@ -286,12 +243,12 @@ export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[
                         <img
                           src={image}
                           alt=""
-                          width={size - border * 2}
-                          height={size - border * 2}
-                          style={{ width: size - border * 2, height: size - border * 2, borderRadius: size, objectFit: "cover" }}
+                          width={size - 4}
+                          height={size - 4}
+                          style={{ width: size - 4, height: size - 4, borderRadius: size, objectFit: "cover" }}
                         />
                       ) : on ? (
-                        <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24">
+                        <svg width={size * 0.42} height={size * 0.42} viewBox="0 0 24 24">
                           <path
                             d={shape.d}
                             fill={shape.fill ? bg : "none"}
@@ -302,38 +259,52 @@ export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[
                           />
                         </svg>
                       ) : hasReward ? (
-                        gift(fg, Math.round(size * 0.5))
+                        gift(fg, Math.round(size * 0.44))
                       ) : (
                         // Número del sello: la tarjeta se lee como un recorrido.
                         <div
                           style={{
                             display: "flex",
-                            fontSize: Math.round(size * 0.34),
-                            fontWeight: 700,
-                            color: rgba(fg, 0.5),
+                            fontSize: Math.round(size * 0.3),
+                            letterSpacing: 1,
+                            color: rgba(fg, 0.6),
                           }}
                         >
                           {index + 1}
                         </div>
                       )}
+                      {on && !image ? (
+                        // Aro interior fino, como el borde de un sello de caucho.
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: Math.round(size * 0.08),
+                            left: Math.round(size * 0.08),
+                            width: size - Math.round(size * 0.08) * 2,
+                            height: size - Math.round(size * 0.08) * 2,
+                            borderRadius: size,
+                            border: `${Math.max(1.5, border * 0.75)}px solid ${rgba(bg, 0.55)}`,
+                          }}
+                        />
+                      ) : null}
                       {on && hasReward ? (
                         // Premio ganado en este sello: insignia con regalo.
                         <div
                           style={{
                             position: "absolute",
-                            right: -Math.round(size * 0.08),
-                            bottom: -Math.round(size * 0.08),
-                            width: Math.round(size * 0.42),
-                            height: Math.round(size * 0.42),
+                            right: -Math.round(size * 0.06),
+                            bottom: -Math.round(size * 0.06),
+                            width: Math.round(size * 0.38),
+                            height: Math.round(size * 0.38),
                             borderRadius: size,
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
                             backgroundColor: bg,
-                            border: `${Math.max(2, border - 1)}px solid ${fg}`,
+                            border: `${border}px solid ${fg}`,
                           }}
                         >
-                          {gift(fg, Math.round(size * 0.24), 2.4)}
+                          {gift(fg, Math.round(size * 0.22), 2)}
                         </div>
                       ) : null}
                     </div>
@@ -355,7 +326,6 @@ export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[
               color: bg,
               fontSize: 30,
               fontWeight: 700,
-              boxShadow: stampShadow,
             }}
           >
             {gift(bg, 32, 2.2)}
