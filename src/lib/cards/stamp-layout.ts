@@ -21,4 +21,4 @@ export const GIFT_ICON_PATHS = [
  * Versión del dibujo de la imagen de sellos de Wallet. Va en su URL (que se
  * cachea inmutable): se sube cada vez que cambia el diseño de la imagen.
  */
-export const STAMPS_IMAGE_RENDER = 6;
+export const STAMPS_IMAGE_RENDER = 7;

@@ -5,6 +5,7 @@ import { SectionTabs } from "@/components/panel/section-tabs";
 import { branchesForPlan } from "@/lib/branches";
 import { getBusinessWithProgram } from "@/lib/auth/business";
 import { requireStaff } from "@/lib/auth/staff";
+import { resolveStampStyle } from "@/lib/cards/stamp-style";
 import { planFeatures } from "@/lib/plans";
 import { LockedFeature } from "@/components/panel/locked-feature";
 import { getProgramMilestones } from "@/lib/rewards-server";
@@ -56,6 +57,7 @@ export default async function ProgramPage({ searchParams }: PageProps<"/panel/pr
           backgroundUrl={business.card_background_url}
           canUseBackgroundImage={features.backgroundImage}
           milestones={milestones.map((m) => m.stampsAt)}
+          stamp={resolveStampStyle(features.customStamp, program.stamp_icon, program.stamp_image_url)}
           initial={{
             cardTitle: program.card_title,
             stampsRequired: program.stamps_required,

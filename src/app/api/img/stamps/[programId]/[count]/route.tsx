@@ -1,7 +1,8 @@
 import { ImageResponse } from "next/og";
 import { BACKGROUND_OVERLAY_ALPHA } from "@/lib/cards/card-style";
 import { GIFT_ICON_PATHS, stampGrid } from "@/lib/cards/stamp-layout";
-import { rubberStampDataUri, type RubberStampContent } from "@/lib/cards/rubber-stamp-image";
+import { rubberStampDataUri } from "@/lib/cards/rubber-stamp-image";
+import { STAMP_TILTS, type RubberStampContent } from "@/lib/cards/rubber-stamp-svg";
 import { cardStampLogos } from "@/lib/cards/stamp-logos";
 import { resolveStampStyle, STAMP_ICON_SHAPES } from "@/lib/cards/stamp-style";
 import { planFeatures, type Plan } from "@/lib/plans";
@@ -51,9 +52,6 @@ function rgba(hex: string, alpha: number): string {
   const [r, g, b] = rgbOf(hex);
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
-
-/** Inclinación leve y fija de cada sello puesto, como un sello de caucho a mano. */
-const TILTS = [-8, 5, -4, 7, -6, 3, -7, 6, -3, 8];
 
 export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[programId]/[count]">) {
   const { programId, count: countParam } = await ctx.params;
@@ -131,8 +129,11 @@ export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[
   // tinta tenue con su número; al sellar, el mismo sello en tinta plena con el
   // ícono o el logo adentro y una leve inclinación, como puesto a mano.
   const rendered = new Map<string, Promise<string>>();
-  const stampPng = (key: string, opacity: number, content: RubberStampContent, seed: number) => {
-    if (!rendered.has(key)) rendered.set(key, rubberStampDataUri({ px: size * 2, ink: fg, opacity, content, seed }));
+  const icon = { d: shape.d, fill: shape.fill };
+  const stampPng = (key: string, opacity: number, content: RubberStampContent, seedIndex: number) => {
+    if (!rendered.has(key)) {
+      rendered.set(key, rubberStampDataUri({ px: size * 2, ink: fg, opacity, content, icon, seedIndex }));
+    }
     return rendered.get(key)!;
   };
   const slots = await Promise.all(
@@ -140,13 +141,13 @@ export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[
       const on = index < filled;
       const hasReward = index === required - 1 || milestones.includes(index + 1);
       if (!on) {
-        return hasReward ? stampPng("gift", 0.85, { kind: "gift" }, 4) : stampPng("empty", 0.42, { kind: "none" }, 4);
+        return hasReward ? stampPng("gift", 0.85, { kind: "gift" }, 0) : stampPng("empty", 0.42, { kind: "none" }, 0);
       }
       const image = logos[index] ?? stampImage;
-      const seed = 3 + (index % 4) * 7; // textura distinta entre sellos puestos
+      const seedIndex = index % 4; // textura distinta entre sellos puestos
       return image
-        ? stampPng(`img:${seed}:${image.slice(-40)}:${image.length}`, 1, { kind: "image", dataUri: image }, seed)
-        : stampPng(`icon:${seed}`, 1, { kind: "icon", d: shape.d, fill: shape.fill }, seed);
+        ? stampPng(`img:${seedIndex}:${image.slice(-40)}:${image.length}`, 1, { kind: "image", href: image }, seedIndex)
+        : stampPng(`icon:${seedIndex}`, 1, { kind: "icon" }, seedIndex);
     }),
   );
   const grid = Array.from({ length: rows }, (_, r) =>
@@ -241,7 +242,7 @@ export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[
                         left: 0,
                         width: size,
                         height: size,
-                        ...(on ? { transform: `rotate(${TILTS[index % TILTS.length]}deg)` } : {}),
+                        ...(on ? { transform: `rotate(${STAMP_TILTS[index % STAMP_TILTS.length]}deg)` } : {}),
                       }}
                     />
                     {!on && !hasReward ? (

@@ -12,7 +12,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { StampGrid } from "@/components/customer/stamp-grid";
 import { LockedFeature } from "@/components/panel/locked-feature";
 import { cardBackgroundStyle } from "@/lib/cards/card-style";
-import { STAMPS_IMAGE_RENDER } from "@/lib/cards/stamp-layout";
+import type { StampStyle } from "@/lib/cards/stamp-style";
 import { COMMON_COUNTRIES, COMMON_TIMEZONES, type ProgramFormValues } from "@/lib/panel/program-schema";
 import { saveProgram, type ProgramFormState } from "./actions";
 
@@ -24,13 +24,15 @@ interface Props {
   canUseBackgroundImage: boolean;
   /** Sellos con premio intermedio guardados (para la vista previa). */
   milestones: number[];
+  /** Diseño del sello guardado (ícono o imagen). */
+  stamp: StampStyle;
   initial: ProgramFormValues;
 }
 
 const selectClass =
   "h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 
-export function ProgramForm({ programId, designVersion, logoUrl, backgroundUrl, canUseBackgroundImage, milestones, initial }: Props) {
+export function ProgramForm({ programId, designVersion, logoUrl, backgroundUrl, canUseBackgroundImage, milestones, stamp, initial }: Props) {
   const router = useRouter();
   const [state, action, pending] = useActionState<ProgramFormState, FormData>(saveProgram, {});
   const [v, setV] = useState(initial);
@@ -47,18 +49,6 @@ export function ProgramForm({ programId, designVersion, logoUrl, backgroundUrl, 
 
   const required = Math.min(30, Math.max(2, Number(v.stampsRequired) || 2));
   const count = Math.min(previewCount, required);
-  // Con los colores y sellos guardados, las pestañas de Wallet muestran la imagen
-  // real que reciben los pases; con cambios sin guardar, una aproximación en vivo.
-  const savedLook =
-    v.primaryColor.toLowerCase() === initial.primaryColor.toLowerCase() &&
-    v.textColor.toLowerCase() === initial.textColor.toLowerCase() &&
-    required === Number(initial.stampsRequired);
-  const walletImages = savedLook
-    ? {
-        google: `/api/img/stamps/${programId}/${count}?v=${designVersion}-r${STAMPS_IMAGE_RENDER}`,
-        apple: `/api/img/stamps/${programId}/${count}?v=${designVersion}-r${STAMPS_IMAGE_RENDER}&f=apple`,
-      }
-    : null;
 
   const timezones = COMMON_TIMEZONES.includes(v.timezone) ? COMMON_TIMEZONES : [v.timezone, ...COMMON_TIMEZONES];
   const countries = COMMON_COUNTRIES.some(([c]) => c === v.defaultCountry)
@@ -182,7 +172,7 @@ export function ProgramForm({ programId, designVersion, logoUrl, backgroundUrl, 
           logoUrl={logoUrl}
           backgroundUrl={backgroundUrl}
           milestones={milestones}
-          walletImages={walletImages}
+          stamp={stamp}
         />
         <div className="flex items-center gap-3 text-sm">
           <Label htmlFor="preview-count" className="shrink-0 text-muted-foreground">
@@ -287,7 +277,7 @@ function CardPreview({
   logoUrl,
   backgroundUrl,
   milestones,
-  walletImages,
+  stamp,
 }: {
   values: ProgramFormValues;
   required: number;
@@ -295,14 +285,24 @@ function CardPreview({
   logoUrl: string | null;
   backgroundUrl: string | null;
   milestones: number[];
-  /** Imagen real de sellos de Wallet (solo sin cambios de color o sellos pendientes). */
-  walletImages: { google: string; apple: string } | null;
+  stamp: StampStyle;
 }) {
   const [tab, setTab] = useState<"web" | "wallet" | "apple">("web");
   const bg = /^#[0-9A-Fa-f]{6}$/.test(values.primaryColor) ? values.primaryColor : "#0D0D0D";
   const fg = /^#[0-9A-Fa-f]{6}$/.test(values.textColor) ? values.textColor : "#FFFFFF";
   const name = values.businessName || "Tu negocio";
-  const previewProps: PreviewProps = { values, name, bg, fg, required, count, logoUrl, backgroundUrl, milestones: milestones.filter((m) => m < required) };
+  const previewProps: PreviewProps = {
+    values,
+    name,
+    bg,
+    fg,
+    required,
+    count,
+    logoUrl,
+    backgroundUrl,
+    milestones: milestones.filter((m) => m < required),
+    stamp,
+  };
 
   return (
     <div className="space-y-3">
@@ -334,20 +334,16 @@ function CardPreview({
           {tab === "web" ? (
             <WebCardPreview {...previewProps} />
           ) : tab === "wallet" ? (
-            <WalletPreview {...previewProps} image={walletImages?.google ?? null} />
+            <WalletPreview {...previewProps} />
           ) : (
-            <ApplePreview {...previewProps} image={walletImages?.apple ?? null} />
+            <ApplePreview {...previewProps} />
           )}
         </div>
       </div>
       <p className="text-center text-xs text-muted-foreground">
         {tab === "web"
           ? "Así la ve tu cliente al abrir su tarjeta."
-          : `${tab === "wallet" ? "Google" : "Apple"} define la tipografía y el orden exacto. ${
-              walletImages
-                ? "Los sellos son la imagen real que recibe el pase."
-                : "Guarda los cambios para ver los sellos tal como salen en el pase."
-            }`}
+          : `Aproximación: ${tab === "wallet" ? "Google" : "Apple"} define la tipografía y el orden exacto.`}
       </p>
     </div>
   );
@@ -363,9 +359,10 @@ interface PreviewProps {
   logoUrl: string | null;
   backgroundUrl: string | null;
   milestones: number[];
+  stamp: StampStyle;
 }
 
-function WebCardPreview({ values, name, bg, fg, required, count, logoUrl, backgroundUrl, milestones }: PreviewProps) {
+function WebCardPreview({ values, name, bg, fg, required, count, logoUrl, backgroundUrl, milestones, stamp }: PreviewProps) {
   const reward = count >= required;
   return (
     <article className="overflow-hidden rounded-3xl shadow-lg" style={{ ...cardBackgroundStyle(bg, backgroundUrl), color: fg }}>
@@ -380,7 +377,7 @@ function WebCardPreview({ values, name, bg, fg, required, count, logoUrl, backgr
         <p className="text-[9px] tracking-wide uppercase opacity-70">Cliente</p>
         <p className="text-sm font-semibold">Camila Rojas</p>
       </div>
-      <StampGrid count={count} required={required} primaryColor={bg} textColor={fg} milestones={milestones} />
+      <StampGrid count={count} required={required} primaryColor={bg} textColor={fg} milestones={milestones} stamp={stamp} />
       <div className="px-4 pb-4">
         <p className="text-xl font-bold tabular-nums">
           {count}
@@ -399,18 +396,7 @@ function WebCardPreview({ values, name, bg, fg, required, count, logoUrl, backgr
   );
 }
 
-function WalletPreview({
-  values,
-  name,
-  bg,
-  fg,
-  required,
-  count,
-  logoUrl,
-  backgroundUrl,
-  milestones,
-  image,
-}: PreviewProps & { image: string | null }) {
+function WalletPreview({ values, name, bg, fg, required, count, logoUrl, backgroundUrl, milestones, stamp }: PreviewProps) {
   return (
     <article className="overflow-hidden rounded-3xl shadow-lg" style={{ backgroundColor: bg, color: fg }}>
       <div className="flex items-center gap-2.5 px-4 pt-4">
@@ -434,28 +420,23 @@ function WalletPreview({
         <QRCodeSVG value={`LC1:${SAMPLE_CODE}`} size={112} level="M" marginSize={0} />
       </div>
       <p className="pt-1.5 pb-5 text-center text-[10px] opacity-80">{SAMPLE_CODE}</p>
-      {/* Imagen destacada (hero): la real de /api/img/stamps o una aproximación. */}
-      {image ? (
-        // eslint-disable-next-line @next/next/no-img-element -- imagen dinámica
-        <img src={image} alt="Sellos en Google Wallet" className="-mt-px aspect-[1032/336] w-full" />
-      ) : (
-        <div
-          className="relative -mt-px aspect-[1032/336] w-full"
-          style={
-            backgroundUrl
-              ? {
-                  backgroundImage: `linear-gradient(to bottom, ${bg} 0%, ${bg}E6 18%, ${bg}00 70%), linear-gradient(${bg}A6, ${bg}A6), url("${backgroundUrl}")`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                }
-              : { backgroundColor: bg }
-          }
-        >
-          <div className="absolute inset-0 flex items-center px-2">
-            <StampGrid count={count} required={required} primaryColor={bg} textColor={fg} milestones={milestones} />
-          </div>
+      {/* Imagen destacada (hero): mismo dibujo que /api/img/stamps, con el fundido superior. */}
+      <div
+        className="relative -mt-px aspect-[1032/336] w-full"
+        style={
+          backgroundUrl
+            ? {
+                backgroundImage: `linear-gradient(to bottom, ${bg} 0%, ${bg}E6 18%, ${bg}00 70%), linear-gradient(${bg}A6, ${bg}A6), url("${backgroundUrl}")`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }
+            : { backgroundColor: bg }
+        }
+      >
+        <div className="absolute inset-0 flex items-center px-2">
+          <StampGrid count={count} required={required} primaryColor={bg} textColor={fg} milestones={milestones} stamp={stamp} />
         </div>
-      )}
+      </div>
     </article>
   );
 }
@@ -464,18 +445,7 @@ function WalletPreview({
  * Apple Wallet (pase storeCard): encabezado con logo y sellos, franja de imagen
  * (strip, 375×144) con los sellos, campos de cliente y premio, y el QR abajo.
  */
-function ApplePreview({
-  values,
-  name,
-  bg,
-  fg,
-  required,
-  count,
-  logoUrl,
-  backgroundUrl,
-  milestones,
-  image,
-}: PreviewProps & { image: string | null }) {
+function ApplePreview({ values, name, bg, fg, required, count, logoUrl, backgroundUrl, milestones, stamp }: PreviewProps) {
   const nextMilestone = milestones.filter((m) => m > count).sort((a, b) => a - b)[0];
   const front =
     count >= required || milestones.includes(count)
@@ -496,27 +466,22 @@ function ApplePreview({
           </p>
         </div>
       </div>
-      {image ? (
-        // eslint-disable-next-line @next/next/no-img-element -- imagen dinámica
-        <img src={image} alt="Sellos en Apple Wallet" className="aspect-[375/144] w-full" />
-      ) : (
-        <div
-          className="relative aspect-[375/144] w-full"
-          style={
-            backgroundUrl
-              ? {
-                  backgroundImage: `linear-gradient(${bg}A6, ${bg}A6), url("${backgroundUrl}")`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                }
-              : { backgroundColor: bg }
-          }
-        >
-          <div className="absolute inset-0 flex items-center px-1">
-            <StampGrid count={count} required={required} primaryColor={bg} textColor={fg} milestones={milestones} />
-          </div>
+      <div
+        className="relative aspect-[375/144] w-full"
+        style={
+          backgroundUrl
+            ? {
+                backgroundImage: `linear-gradient(${bg}A6, ${bg}A6), url("${backgroundUrl}")`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }
+            : { backgroundColor: bg }
+        }
+      >
+        <div className="absolute inset-0 flex items-center px-1">
+          <StampGrid count={count} required={required} primaryColor={bg} textColor={fg} milestones={milestones} stamp={stamp} />
         </div>
-      )}
+      </div>
       {/* Mismo orden que apple-pass.ts: premio (rewardField) y cliente. */}
       <div className="flex justify-between gap-3 px-3 pt-3 text-left">
         <div className="min-w-0">
