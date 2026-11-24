@@ -16,3 +16,9 @@ export const GIFT_ICON_PATHS = [
   "M19 12.5V19a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-6.5",
   "M7.5 9a2.5 2.5 0 0 1 0-5C10 4 12 9 12 9s2-5 4.5-5a2.5 2.5 0 0 1 0 5",
 ];
+
+/**
+ * Versión del dibujo de la imagen de sellos de Wallet. Va en su URL (que se
+ * cachea inmutable): se sube cada vez que cambia el diseño de la imagen.
+ */
+export const STAMPS_IMAGE_RENDER = 5;
