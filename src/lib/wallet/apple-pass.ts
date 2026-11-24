@@ -122,23 +122,15 @@ export function appleStatusLine(data: WalletCardData): string {
 }
 
 /**
- * Frente del pase, debajo de los sellos: a la izquierda el premio (el que está
- * listo para cobrar o el próximo) y a la derecha cuánto falta o «Para cobrar».
+ * Frente del pase, debajo de los sellos: el premio que está listo para cobrar
+ * o, si no hay, el próximo.
  */
-export function frontFields(data: WalletCardData): { reward: { label: string; value: string }; status: { label: string; value: string } } {
-  if (data.rewardAvailable) {
-    return { reward: { label: "TU PREMIO", value: data.rewardDescription }, status: { label: "ESTADO", value: "Para cobrar" } };
-  }
+export function rewardField(data: WalletCardData): { label: string; value: string } {
+  if (data.rewardAvailable) return { label: "TU PREMIO", value: data.rewardDescription };
   const pending = data.milestones.find((m) => m.available);
-  if (pending) {
-    return { reward: { label: "TU PREMIO", value: pending.description }, status: { label: "ESTADO", value: "Para cobrar" } };
-  }
+  if (pending) return { label: "TU PREMIO", value: pending.description };
   const goal = nextGoal(data.milestones, data.stampsCount, data.stampsRequired, data.rewardDescription);
-  const left = Math.max(1, goal.stampsAt - data.stampsCount);
-  return {
-    reward: { label: "PRÓXIMO PREMIO", value: goal.description },
-    status: { label: "TE FALTAN", value: left === 1 ? "1 sello" : `${left} sellos` },
-  };
+  return { label: "PRÓXIMO PREMIO", value: goal.description };
 }
 
 /** ¿El iPhone ya registró el pase con este identificador? */
@@ -208,15 +200,12 @@ export async function buildApplePass(cardId: string, passTypeId?: string): Promi
     label: "SELLOS",
     value: `${data.stampsCount}/${data.stampsRequired}`,
   });
-  // Frente, debajo de los sellos: premio y cuánto falta (lo que más mira el
-  // cliente) y, en la fila de abajo, su nombre para que el cajero lo confirme.
-  // Sin changeMessage para no avisar en cada sello.
-  const front = frontFields(data);
+  // Frente, debajo de los sellos: el premio y el nombre del cliente (para que el
+  // cajero lo confirme). Sin changeMessage para no avisar en cada sello.
   pass.secondaryFields.push(
-    { key: "next", ...front.reward },
-    { key: "left", ...front.status, textAlignment: "PKTextAlignmentRight" },
+    { key: "next", ...rewardField(data) },
+    { key: "customer", label: "CLIENTE", value: data.customerName, textAlignment: "PKTextAlignmentRight" },
   );
-  pass.auxiliaryFields.push({ key: "customer", label: "CLIENTE", value: data.customerName });
 
   const rewards = [
     ...data.milestones.map(

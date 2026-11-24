@@ -477,20 +477,12 @@ function ApplePreview({
   image,
 }: PreviewProps & { image: string | null }) {
   const nextMilestone = milestones.filter((m) => m > count).sort((a, b) => a - b)[0];
-  const goal = nextMilestone ?? required;
   const front =
     count >= required || milestones.includes(count)
-      ? {
-          rewardLabel: "Tu premio",
-          reward: count >= required ? values.rewardDescription : `Premio de los ${count} sellos`,
-          statusLabel: "Estado",
-          status: "Para cobrar",
-        }
+      ? { label: "Tu premio", value: count >= required ? values.rewardDescription : `Premio de los ${count} sellos` }
       : {
-          rewardLabel: "Próximo premio",
-          reward: nextMilestone ? `Premio de los ${nextMilestone} sellos` : values.rewardDescription,
-          statusLabel: "Te faltan",
-          status: goal - count === 1 ? "1 sello" : `${goal - count} sellos`,
+          label: "Próximo premio",
+          value: nextMilestone ? `Premio de los ${nextMilestone} sellos` : values.rewardDescription,
         };
   return (
     <article className="overflow-hidden rounded-2xl shadow-lg" style={{ backgroundColor: bg, color: fg }}>
@@ -525,20 +517,16 @@ function ApplePreview({
           </div>
         </div>
       )}
-      {/* Mismo orden que apple-pass.ts (frontFields): premio y cuánto falta; abajo, el cliente. */}
+      {/* Mismo orden que apple-pass.ts: premio (rewardField) y cliente. */}
       <div className="flex justify-between gap-3 px-3 pt-3 text-left">
         <div className="min-w-0">
-          <p className="text-[9px] font-semibold tracking-wide uppercase opacity-75">{front.rewardLabel}</p>
-          <p className="truncate text-sm">{front.reward}</p>
+          <p className="text-[9px] font-semibold tracking-wide uppercase opacity-75">{front.label}</p>
+          <p className="truncate text-sm">{front.value}</p>
         </div>
         <div className="shrink-0 text-right">
-          <p className="text-[9px] font-semibold tracking-wide uppercase opacity-75">{front.statusLabel}</p>
-          <p className="text-sm">{front.status}</p>
+          <p className="text-[9px] font-semibold tracking-wide uppercase opacity-75">Cliente</p>
+          <p className="text-sm">Camila Rojas</p>
         </div>
-      </div>
-      <div className="px-3 pt-2.5">
-        <p className="text-[9px] font-semibold tracking-wide uppercase opacity-75">Cliente</p>
-        <p className="truncate text-sm">Camila Rojas</p>
       </div>
       <div className="mx-auto mt-4 mb-4 w-fit rounded-lg bg-white p-2.5 text-center text-neutral-900">
         <QRCodeSVG value={`LC1:${SAMPLE_CODE}`} size={110} level="M" marginSize={0} />

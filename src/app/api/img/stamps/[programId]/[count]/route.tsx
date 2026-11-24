@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 import { BACKGROUND_OVERLAY_ALPHA } from "@/lib/cards/card-style";
 import { GIFT_ICON_PATHS, stampGrid } from "@/lib/cards/stamp-layout";
+import { rubberStampDataUri, type RubberStampContent } from "@/lib/cards/rubber-stamp-image";
 import { cardStampLogos } from "@/lib/cards/stamp-logos";
 import { resolveStampStyle, STAMP_ICON_SHAPES } from "@/lib/cards/stamp-style";
 import { planFeatures, type Plan } from "@/lib/plans";
@@ -50,6 +51,9 @@ function rgba(hex: string, alpha: number): string {
   const [r, g, b] = rgbOf(hex);
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
+
+/** Inclinación leve y fija de cada sello puesto, como un sello de caucho a mano. */
+const TILTS = [-8, 5, -4, 7, -6, 3, -7, 6, -3, 8];
 
 export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[programId]/[count]">) {
   const { programId, count: countParam } = await ctx.params;
@@ -112,9 +116,9 @@ export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[
   const filled = Math.min(count, required);
   const { rows, cols } = stampGrid(required);
 
-  const padding = 40;
-  const sidePadding = 90; // aire a los lados: los sellos no llenan todo el ancho
-  const gap = rows === 1 ? 40 : 30;
+  const padding = 34;
+  const sidePadding = 80; // aire a los lados: los sellos no llenan todo el ancho
+  const gap = rows === 1 ? 36 : 26;
   const bannerHeight = reward ? 60 : 0;
   const size = Math.floor(
     Math.min(
@@ -123,14 +127,30 @@ export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[
     ),
   );
 
-  // Trazos finos y parejos: aro de los sellos y línea del camino.
-  const border = Math.max(2, Math.round(size / 40));
-  const track = Math.max(2, Math.round(size / 48));
-  const circles = Array.from({ length: required }, (_, i) => i < filled);
-  const grid = Array.from({ length: rows }, (_, r) => circles.slice(r * cols, (r + 1) * cols));
-  // Próximo círculo con premio (intermedio o final) aún sin llenar: se resalta.
-  const nextPrize = Array.from({ length: required }, (_, i) => i).find(
-    (i) => i >= filled && (i === required - 1 || milestones.includes(i + 1)),
+  // Cada casilla es un sello de caucho (rubber-stamp-image.ts). Las vacías van en
+  // tinta tenue con su número; al sellar, el mismo sello en tinta plena con el
+  // ícono o el logo adentro y una leve inclinación, como puesto a mano.
+  const rendered = new Map<string, Promise<string>>();
+  const stampPng = (key: string, opacity: number, content: RubberStampContent, seed: number) => {
+    if (!rendered.has(key)) rendered.set(key, rubberStampDataUri({ px: size * 2, ink: fg, opacity, content, seed }));
+    return rendered.get(key)!;
+  };
+  const slots = await Promise.all(
+    Array.from({ length: required }, (_, index) => {
+      const on = index < filled;
+      const hasReward = index === required - 1 || milestones.includes(index + 1);
+      if (!on) {
+        return hasReward ? stampPng("gift", 0.85, { kind: "gift" }, 4) : stampPng("empty", 0.42, { kind: "none" }, 4);
+      }
+      const image = logos[index] ?? stampImage;
+      const seed = 3 + (index % 4) * 7; // textura distinta entre sellos puestos
+      return image
+        ? stampPng(`img:${seed}:${image.slice(-40)}:${image.length}`, 1, { kind: "image", dataUri: image }, seed)
+        : stampPng(`icon:${seed}`, 1, { kind: "icon", d: shape.d, fill: shape.fill }, seed);
+    }),
+  );
+  const grid = Array.from({ length: rows }, (_, r) =>
+    Array.from({ length: Math.min(cols, required - r * cols) }, (_, i) => r * cols + i),
   );
   const gift = (color: string, px: number, stroke = 1.6) => (
     <svg width={px} height={px} viewBox="0 0 24 24">
@@ -191,128 +211,68 @@ export async function GET(request: Request, ctx: RouteContext<"/api/img/stamps/[
             }}
           />
         ) : null}
-        {/* El camino: cada fila une sus sellos con una línea; el tramo recorrido va sólido. */}
         <div style={{ display: "flex", flexDirection: "column", gap }}>
-          {grid.map((row, r) => {
-            const done = row.filter(Boolean).length;
-            const step = size + gap;
-            return (
-              <div key={r} style={{ display: "flex", gap, position: "relative" }}>
-                {/* Camino: un tramo fino entre cada par de sellos; sólido si ya se recorrió. */}
-                {row.slice(1).map((_, j) => (
+          {grid.map((row, r) => (
+            <div key={r} style={{ display: "flex", gap }}>
+              {row.map((index) => {
+                const on = index < filled;
+                const hasReward = index === required - 1 || milestones.includes(index + 1);
+                return (
                   <div
-                    key={`t${j}`}
+                    key={index}
                     style={{
-                      position: "absolute",
-                      top: size / 2 - track / 2,
-                      left: j * step + size + Math.round(gap * 0.18),
-                      width: gap - Math.round(gap * 0.36),
-                      height: track,
-                      borderRadius: track,
-                      backgroundColor: j + 1 < done ? fg : rgba(fg, 0.3),
+                      width: size,
+                      height: size,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      position: "relative",
                     }}
-                  />
-                ))}
-                {row.map((on, i) => {
-                  const index = r * cols + i;
-                  const hasReward = index === required - 1 || milestones.includes(index + 1);
-                  const image = on ? (logos[index] ?? stampImage) : null;
-                  const isNext = index === nextPrize;
-                  return (
-                    <div
-                      key={i}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- Satori solo entiende <img> */}
+                    <img
+                      src={slots[index]}
+                      alt=""
+                      width={size}
+                      height={size}
                       style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
                         width: size,
                         height: size,
-                        borderRadius: size,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        position: "relative",
-                        // Sin rellenos ni sombras: el puesto es un disco sólido y el
-                        // pendiente, solo un aro fino.
-                        ...(on
-                          ? { backgroundColor: fg }
-                          : {
-                              border: `${border}px solid ${hasReward || isNext ? fg : rgba(fg, 0.45)}`,
-                            }),
+                        ...(on ? { transform: `rotate(${TILTS[index % TILTS.length]}deg)` } : {}),
                       }}
-                    >
-                      {image ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- Satori solo entiende <img>
-                        <img
-                          src={image}
-                          alt=""
-                          width={size - 4}
-                          height={size - 4}
-                          style={{ width: size - 4, height: size - 4, borderRadius: size, objectFit: "cover" }}
-                        />
-                      ) : on ? (
-                        <svg width={size * 0.42} height={size * 0.42} viewBox="0 0 24 24">
-                          <path
-                            d={shape.d}
-                            fill={shape.fill ? bg : "none"}
-                            stroke={shape.fill ? "none" : bg}
-                            strokeWidth={3.2}
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      ) : hasReward ? (
-                        gift(fg, Math.round(size * 0.44))
-                      ) : (
-                        // Número del sello: la tarjeta se lee como un recorrido.
-                        <div
-                          style={{
-                            display: "flex",
-                            fontSize: Math.round(size * 0.3),
-                            letterSpacing: 1,
-                            color: rgba(fg, 0.6),
-                          }}
-                        >
-                          {index + 1}
-                        </div>
-                      )}
-                      {on && !image ? (
-                        // Aro interior fino, como el borde de un sello de caucho.
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: Math.round(size * 0.08),
-                            left: Math.round(size * 0.08),
-                            width: size - Math.round(size * 0.08) * 2,
-                            height: size - Math.round(size * 0.08) * 2,
-                            borderRadius: size,
-                            border: `${Math.max(1.5, border * 0.75)}px solid ${rgba(bg, 0.55)}`,
-                          }}
-                        />
-                      ) : null}
-                      {on && hasReward ? (
-                        // Premio ganado en este sello: insignia con regalo.
-                        <div
-                          style={{
-                            position: "absolute",
-                            right: -Math.round(size * 0.06),
-                            bottom: -Math.round(size * 0.06),
-                            width: Math.round(size * 0.38),
-                            height: Math.round(size * 0.38),
-                            borderRadius: size,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            backgroundColor: bg,
-                            border: `${border}px solid ${fg}`,
-                          }}
-                        >
-                          {gift(fg, Math.round(size * 0.22), 2)}
-                        </div>
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
+                    />
+                    {!on && !hasReward ? (
+                      <div style={{ display: "flex", fontSize: Math.round(size * 0.3), color: rgba(fg, 0.55) }}>
+                        {index + 1}
+                      </div>
+                    ) : null}
+                    {on && hasReward ? (
+                      // Premio ganado en este sello: insignia con regalo.
+                      <div
+                        style={{
+                          position: "absolute",
+                          right: -Math.round(size * 0.04),
+                          bottom: -Math.round(size * 0.04),
+                          width: Math.round(size * 0.36),
+                          height: Math.round(size * 0.36),
+                          borderRadius: size,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          backgroundColor: fg,
+                        }}
+                      >
+                        {gift(bg, Math.round(size * 0.22), 2)}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
         </div>
         {reward ? (
           <div
